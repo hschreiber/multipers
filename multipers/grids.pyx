@@ -93,7 +93,7 @@ def compute_grid(
             import torch
             assert isinstance(first, torch.Tensor), "Only numpy and torch are supported ftm."
             initial_grid = x
-
+    
     if is_numpy_compatible:
         return _compute_grid_numpy(
         initial_grid,
@@ -149,7 +149,7 @@ def _compute_grid_numpy(
         a,b=drop_quantiles
     except:
         a,b=drop_quantiles,drop_quantiles
-
+    
     if a != 0 or b != 0:
         boxes = np.asarray([np.quantile(filtration, [a, b], axis=1, method='closest_observation') for filtration in filtrations_values])
         min_filtration, max_filtration = np.min(boxes, axis=(0,1)), np.max(boxes, axis=(0,1)) # box, birth/death, filtration

@@ -68,13 +68,14 @@ def module_approximation_from_slicer(
         print(r"Got a non-vine slicer as an input. Use `vineyard=True` to remove this copy.", file=sys.stderr)
         slicer = Slicer(slicer, vineyard=True)
 
-    if slicer.dtype == np.float32:
-        approx_mod = PyModule_f32()
-        if box is None:
-            box = slicer.filtration_bounds()
-        mod_f32 = _multiparameter_module_approximation_f32(slicer,_py21c_f32(direction), max_error,Box[float](box),threshold, complete, verbose)
-        ptr = <intptr_t>(&mod_f32)
-    elif slicer.dtype == np.float64:
+    # if slicer.dtype == np.float32:
+    #     approx_mod = PyModule_f32()
+    #     if box is None:
+    #         box = slicer.filtration_bounds()
+    #     mod_f32 = _multiparameter_module_approximation_f32(slicer,_py21c_f32(direction), max_error,Box[float](box),threshold, complete, verbose)
+    #     ptr = <intptr_t>(&mod_f32)
+    # el
+    if slicer.dtype == np.float64:
         approx_mod = PyModule_f64()
         if box is None:
             box = slicer.filtration_bounds()

@@ -196,14 +196,18 @@ cdef class {{D['PYTHON_TYPE']}}:
         """
         cdef uint32_t num_generators = len(generator_maps)
         cdef vector[vector[uint32_t]] c_generator_maps
-        cdef vector[One_critical_filtration[{{D['C_VALUE_TYPE']}}]] c_filtration_values
+        cdef vector[{{D['FILTRATION_TYPE']}}] c_filtration_values
         for stuff in generator_maps:
             c_generator_maps.push_back(<vector[uint32_t]>(stuff))
         for f in filtration_values:
             # cf.clear()
             # for truc in f:
             #     cf.push_back(truc)
+            {{if D['NUM_PARAMETERS'] == -1}}
             c_filtration_values.push_back(_py21c_{{D['SHORT_VALUE_TYPE']}}(f))
+            {{else}}
+            c_filtration_values.push_back(_py21c_{{D['PARAM_SHORT']}}_{{D['SHORT_VALUE_TYPE']}}(f))
+            {{endif}}
         cdef vector[int] c_generator_dimensions = generator_dimensions
         assert num_generators == c_generator_maps.size() == c_filtration_values.size(), "Invalid input, shape do not coincide."
         self.truc = {{D['C_TEMPLATE_TYPE']}}(c_generator_maps,c_generator_dimensions, c_filtration_values)
@@ -372,16 +376,25 @@ cdef class {{D['PYTHON_TYPE']}}:
         """
         Computes the bounding box of the current multifiltration.
         """
-        cdef pair[One_critical_filtration[{{D['C_VALUE_TYPE']}}],One_critical_filtration[{{D['C_VALUE_TYPE']}}]] box = self.truc.get_bounding_box()
+        cdef pair[{{D['ONE_CRITICAL_TYPE']}},{{D['ONE_CRITICAL_TYPE']}}] box = self.truc.get_bounding_box()
+        {{if D['NUM_PARAMETERS'] == -1}}
         cdef cnp.ndarray[{{D['C_VALUE_TYPE']}}, ndim=1] a = _ff21cview_{{D['SHORT_VALUE_TYPE']}}(&box.first)
         cdef cnp.ndarray[{{D['C_VALUE_TYPE']}}, ndim=1] b = _ff21cview_{{D['SHORT_VALUE_TYPE']}}(&box.second)
+        {{else}}
+        cdef cnp.ndarray[{{D['C_VALUE_TYPE']}}, ndim=1] a = _ff21cview_{{D['PARAM_SHORT']}}_{{D['SHORT_VALUE_TYPE']}}(&box.first)
+        cdef cnp.ndarray[{{D['C_VALUE_TYPE']}}, ndim=1] b = _ff21cview_{{D['PARAM_SHORT']}}_{{D['SHORT_VALUE_TYPE']}}(&box.second)
+        {{endif}}
         return np.asarray([a,b])
     def get_filtrations_values(self)->np.ndarray:
         """
         Returns the current filtration values of the slicer.
         """
-        cdef vector[One_critical_filtration[{{D['C_VALUE_TYPE']}}]] v = self.truc.get_filtration_values()
+        cdef vector[{{D['ONE_CRITICAL_TYPE']}}] v = self.truc.get_filtration_values()
+        {{if D['NUM_PARAMETERS'] == -1}}
         out = _vff21cview_{{D['SHORT_VALUE_TYPE']}}(v, copy=True, duplicate=self.num_parameters)
+        {{else}}
+        out = _vff21cview_{{D['PARAM_SHORT']}}_{{D['SHORT_VALUE_TYPE']}}(v, copy=True, duplicate=self.num_parameters)
+        {{endif}}
         return np.asarray(out)
     def get_filtration_grid(self,grid_strategy:str="exact", **infer_grid_kwargs):
         return mpg.compute_grid(
@@ -396,7 +409,15 @@ cdef class {{D['PYTHON_TYPE']}}:
         {{if D['IS_KCRITICAL']}}
         return _vff2kcview_{{D['SHORT_VALUE_TYPE']}}(self.truc.get_filtrations(), copy=True, duplicate=self.num_parameters)
         {{else}}
+        {{if D['NUM_PARAMETERS'] == -1}}
         return _vff21cview_{{D['SHORT_VALUE_TYPE']}}(self.truc.get_filtrations(), copy=True, duplicate=self.num_parameters)
+        {{else}}
+        {{if D['IS_FLAT']}}
+        return _vff21cview_{{D['PARAM_SHORT']}}_{{D['SHORT_VALUE_TYPE']}}_flat(self.truc.get_filtrations(), copy=True, duplicate=self.num_parameters)
+        {{else}}
+        return _vff21cview_{{D['PARAM_SHORT']}}_{{D['SHORT_VALUE_TYPE']}}(self.truc.get_filtrations(), copy=True, duplicate=self.num_parameters)
+        {{endif}}
+        {{endif}}
         {{endif}}
 
     def get_dimensions(self)-> np.ndarray:
@@ -774,18 +795,18 @@ def to_blocks(input):
 cdef dict slicer_dict = {
 {{for D in slicers}}
   {{if not D['IS_SIMPLICIAL']}}
-  ({{D['IS_VINE']}}, {{D['IS_KCRITICAL']}}, np.dtype({{D['PY_VALUE_TYPE']}}), "{{D['COLUMN_TYPE']}}".lower(), "{{D['PERS_BACKEND_TYPE']}}".lower()): {{D['PYTHON_TYPE']}},
+  ({{D['IS_VINE']}}, {{D['IS_KCRITICAL']}}, np.dtype({{D['PY_VALUE_TYPE']}}), "{{D['COLUMN_TYPE']}}".lower(), "{{D['PERS_BACKEND_TYPE']}}".lower(), {{D['NUM_PARAMETERS']}}, {{D['IS_FLAT']}}): {{D['PYTHON_TYPE']}},
   {{endif}}
   {{endfor}}
 }
 
-def get_matrix_slicer(bool is_vineyard, bool is_k_critical, type dtype, str col, str pers_backend):
+def get_matrix_slicer(bool is_vineyard, bool is_k_critical, type dtype, str col, str pers_backend, int num_parameters, bool is_flat):
   """
   Given various parameters, returns the specific slicer type associated with them.
   """
-  slicer = slicer_dict.get((is_vineyard, is_k_critical, np.dtype(dtype), col.lower(), pers_backend.lower()), None)
+  slicer = slicer_dict.get((is_vineyard, is_k_critical, np.dtype(dtype), col.lower(), pers_backend.lower(), num_parameters, is_flat), None)
   if slicer is None:
-    raise ValueError(f"Unimplemented combo for {pers_backend} : {is_vineyard=}, {is_k_critical=}, {dtype=}, {col=}")
+    raise ValueError(f"Unimplemented combo for {pers_backend} : {is_vineyard=}, {is_k_critical=}, {dtype=}, {col=}, {num_parameters=}, {is_flat=}")
   return slicer
 
 

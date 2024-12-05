@@ -3,6 +3,9 @@
 #include "multiparameter_module_approximation/format_python-cpp.h"
 #include <gudhi/One_critical_filtration.h>
 #include <gudhi/Multi_critical_filtration.h>
+#include <gudhi/One_critical_filtration_with_n_parameters_view.h>
+#include <gudhi/One_critical_filtration_with_n_parameters.h>
+#include <gudhi/flat_2D_matrix.h>
 #include <algorithm>
 #include <boost/mpl/aux_/na_fwd.hpp>
 #include <cassert>
@@ -190,7 +193,7 @@ class SimplicialStructure {
   unsigned int max_dimension_;
 };
 
-template <class PersBackend, class Structure, class MultiFiltration>
+template <class PersBackend, class Structure, class MultiFiltration, int N>
 class Truc {
  public:
   using Filtration_value = MultiFiltration;
@@ -202,6 +205,20 @@ class Truc {
 
   template <typename value_type = value_type>
   using flat_nodim_barcode = std::vector<std::pair<value_type, value_type>>;
+
+ private:
+  // std::vector<MultiFiltration> generator_filtration_values;  // defined at construction time. Const
+  using One_crit_container = std::conditional_t<
+      N == -1,
+      std::vector<MultiFiltration>,
+      Dynamic_flat_2D_matrix<
+          N,
+          value_type,
+          std::vector<value_type>,
+          Gudhi::multi_filtration::One_critical_filtration_with_n_parameters_view<N, std::vector<value_type> > > >;
+  using Multi_crit_container = std::vector<MultiFiltration>;
+ public:
+  using Filtration_value_container = std::conditional_t<MultiFiltration::is_multi_critical, Multi_crit_container, One_crit_container>;
 
   // CONSTRUCTORS.
   //  - Need everything of the same size, generator order is a PERMUTATION
@@ -610,13 +627,24 @@ class Truc {
       }
       return out;
     } else {
-      return generator_filtration_values;  // copy not necessary for Generator
-    }  // (could return const&)
+      if constexpr (N == -1) {
+        return generator_filtration_values;  // copy not necessary (could return const&)
+      } else {
+        std::vector<typename MultiFiltration::Generator> out(generator_filtration_values.size());
+        for (std::size_t i = 0; i < generator_filtration_values.size(); ++i) {
+          auto f = generator_filtration_values[i];
+          for (std::size_t j = 0; j < N; ++j) {
+            out[i][j] = f[j];
+          }
+        }
+        return out;
+      }
+    }
   }
 
-  inline std::vector<MultiFiltration> &get_filtrations() { return generator_filtration_values; }
+  inline Filtration_value_container &get_filtrations() { return generator_filtration_values; }
 
-  inline const std::vector<MultiFiltration> &get_filtrations() const { return generator_filtration_values; }
+  inline const Filtration_value_container &get_filtrations() const { return generator_filtration_values; }
 
   inline const std::vector<int> get_dimensions() const {
     std::size_t n = this->num_generators();
@@ -649,7 +677,7 @@ class Truc {
     for (std::size_t gen = 0u; gen < coords.size(); ++gen) {
       coords[gen] = compute_coordinates_in_grid<int32_t>(generator_filtration_values[gen], grid);
     }
-    return Truc<PersBackend, Structure, return_type>(structure, coords);
+    return Truc<PersBackend, Structure, return_type, N>(structure, coords);
   }
 
   inline void coarsen_on_grid_inplace(const std::vector<std::vector<typename MultiFiltration::value_type>> &grid,
@@ -720,7 +748,7 @@ class Truc {
 
     inline const std::vector<index_type> &get_current_order() const { return generator_order; }
 
-    inline const std::vector<MultiFiltration> &get_filtrations() const { return truc_ptr->get_filtrations(); }
+    inline const Filtration_value_container &get_filtrations() const { return truc_ptr->get_filtrations(); }
 
     inline const std::vector<int> &get_dimensions() const { return truc_ptr->get_dimensions(); }
 
@@ -870,7 +898,7 @@ class Truc {
                                    bool reverse);
 
  private:
-  std::vector<MultiFiltration> generator_filtration_values;  // defined at construction time. Const
+  Filtration_value_container generator_filtration_values;  // defined at construction time. Const
   std::vector<index_type> generator_order;  // size fixed at construction time, // TODO : CHANGE THAT TO UINT32
   Structure structure;                      // defined at construction time. Const
   std::vector<typename MultiFiltration::value_type> filtration_container;  // filtration of the current slice

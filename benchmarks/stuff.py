@@ -26,10 +26,14 @@ available_dataset: dict[str, Callable] = {
 
 datasets: Sequence[str] = list(available_dataset.keys())
 degrees: Sequence[int] = [0, 1]
-num_pts: Sequence[int] = [100, 300, 500]
-complexes = ["delaunay", "rips"]
-invariants = ["mma", "slice", "hilbert", "rank", "gudhi_slice"]
-vineyard = ["vine", "novine"]
+# num_pts: Sequence[int] = [100, 300, 500]
+num_pts: Sequence[int] = [10000]
+# complexes = ["delaunay", "rips"]
+complexes = ["delaunay"]
+# invariants = ["mma", "slice", "hilbert", "rank", "gudhi_slice"]
+invariants = ["slice", "hilbert", "rank"]
+# vineyard = ["vine", "novine"]
+vineyard = ["novine"]
 num_lines = 50
 num_repetition = 5
 timings = {}
@@ -57,6 +61,7 @@ for args in product(
 ):
     n, dataset, cplx, inv, degree, vine, dtype, col = args
     pts = np.asarray(available_dataset[dataset](n))
+
     st: SimplexTreeMulti_type = mmp.PointCloud2FilteredComplex(
         complex=cplx,
         bandwidths=[0.2],
@@ -64,9 +69,12 @@ for args in product(
         output_type="simplextree",
         expand_dim=degree + 1,
     ).fit_transform([pts])[0][0]
+
     s = mp.Slicer(st, vineyard=(vine == "vine"), dtype=dtype, column_type=col).minpres(
         degree=degree
     )
+    if s.num_parameters != 2:
+        print("Not 2: " + str(s.num_parameters) + "!")
     box = mpg.compute_bounding_box(s).T
     s.minpres_degree = -1  ## makes it non-minpres again
     if inv == "mma":

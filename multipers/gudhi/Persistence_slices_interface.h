@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gudhi/One_critical_filtration_with_n_parameters.h"
 #include "mma_interface_h0.h"
 #include "mma_interface_matrix.h"
 #include "mma_interface_coh.h"
@@ -9,10 +10,10 @@
 #include <gudhi/One_critical_filtration.h>
 #include <gudhi/Multi_critical_filtration.h>
 
-template <typename Filtration>
-using SimplexTreeMultiOptions = Gudhi::multi_persistence::Simplex_tree_options_multidimensional_filtration<Filtration>;
+// template <typename Filtration>
+// using SimplexTreeMultiOptions = Gudhi::multi_persistence::Simplex_tree_options_multidimensional_filtration<Filtration>;
 
-enum Column_types_strs { LIST, SET, HEAP, VECTOR, NAIVE_VECTOR, UNORDERED_SET, INTRUSIVE_LIST, INTRUSIVE_SET };
+// enum Column_types_strs { LIST, SET, HEAP, VECTOR, NAIVE_VECTOR, UNORDERED_SET, INTRUSIVE_LIST, INTRUSIVE_SET };
 
 using Available_columns = Gudhi::persistence_matrix::Column_types;
 
@@ -42,50 +43,53 @@ using GraphBackendVine = Gudhi::multiparameter::interface::Persistence_backend_h
 
 using Filtration_value = Gudhi::multi_filtration::One_critical_filtration<float>;
 
-template <Available_columns col = Available_columns::INTRUSIVE_SET>
-using SimplicialNoVineMatrixTruc =
-    Gudhi::multiparameter::interface::Truc<MatrixBackendNoVine<col>, SimplicialStructure, Filtration_value>;
+// template <Available_columns col = Available_columns::INTRUSIVE_SET>
+// using SimplicialNoVineMatrixTruc =
+//     Gudhi::multiparameter::interface::Truc<MatrixBackendNoVine<col>, SimplicialStructure, Filtration_value>;
 
-template <Available_columns col = Available_columns::INTRUSIVE_SET>
-using GeneralVineTruc = Gudhi::multiparameter::interface::
-    Truc<MatrixBackendVine<col, PresentationStructure>, PresentationStructure, Filtration_value>;
+// template <Available_columns col = Available_columns::INTRUSIVE_SET>
+// using GeneralVineTruc = Gudhi::multiparameter::interface::
+//     Truc<MatrixBackendVine<col, PresentationStructure>, PresentationStructure, Filtration_value>;
 
-template <Available_columns col = Available_columns::INTRUSIVE_SET>
-using GeneralNoVineTruc = Gudhi::multiparameter::interface::
-    Truc<MatrixBackendNoVine<col, PresentationStructure>, PresentationStructure, Filtration_value>;
+// template <Available_columns col = Available_columns::INTRUSIVE_SET>
+// using GeneralNoVineTruc = Gudhi::multiparameter::interface::
+//     Truc<MatrixBackendNoVine<col, PresentationStructure>, PresentationStructure, Filtration_value>;
 
-template <Available_columns col = Available_columns::INTRUSIVE_SET>
-using GeneralVineClementTruc = Gudhi::multiparameter::interface::
-    Truc<ClementMatrixBackendVine<col, PresentationStructure>, PresentationStructure, Filtration_value>;
+// template <Available_columns col = Available_columns::INTRUSIVE_SET>
+// using GeneralVineClementTruc = Gudhi::multiparameter::interface::
+//     Truc<ClementMatrixBackendVine<col, PresentationStructure>, PresentationStructure, Filtration_value>;
 
-template <Available_columns col = Available_columns::INTRUSIVE_SET>
+template <Available_columns col = Available_columns::INTRUSIVE_SET, int N = -1>
 using SimplicialVineMatrixTruc =
-    Gudhi::multiparameter::interface::Truc<MatrixBackendVine<col>, SimplicialStructure, Filtration_value>;
-using SimplicialVineGraphTruc =
-    Gudhi::multiparameter::interface::Truc<GraphBackendVine, SimplicialStructure, Filtration_value>;
+    Gudhi::multiparameter::interface::Truc<MatrixBackendVine<col>, SimplicialStructure, Filtration_value, N>;
+// using SimplicialVineGraphTruc =
+//     Gudhi::multiparameter::interface::Truc<GraphBackendVine, SimplicialStructure, Filtration_value>;
 
 // multicrititcal
-using Multi_critical_filtrationValue = Gudhi::multi_filtration::Multi_critical_filtration<float>;
-template <Available_columns col = Available_columns::INTRUSIVE_SET>
-using KCriticalVineTruc = Gudhi::multiparameter::interface::
-    Truc<MatrixBackendVine<col, PresentationStructure>, PresentationStructure, Multi_critical_filtrationValue>;
+// using Multi_critical_filtrationValue = Gudhi::multi_filtration::Multi_critical_filtration<float>;
+// template <Available_columns col = Available_columns::INTRUSIVE_SET>
+// using KCriticalVineTruc = Gudhi::multiparameter::interface::
+//     Truc<MatrixBackendVine<col, PresentationStructure>, PresentationStructure, Multi_critical_filtrationValue>;
 
 template <bool is_vine, Available_columns col = Available_columns::INTRUSIVE_SET>
 using Matrix_interface = std::conditional_t<is_vine,
                                             MatrixBackendVine<col, PresentationStructure>,
                                             MatrixBackendNoVine<col, PresentationStructure>>;
 
-template <bool is_kcritical, typename value_type>
-using filtration_options = std::conditional_t<is_kcritical,
-                                              Gudhi::multi_filtration::Multi_critical_filtration<value_type>,
-                                              Gudhi::multi_filtration::One_critical_filtration<value_type>>;
+template <bool is_kcritical, typename value_type, int num_parameters>
+using filtration_options = std::conditional_t<
+    is_kcritical,
+    Gudhi::multi_filtration::Multi_critical_filtration<value_type>,
+    std::conditional_t<num_parameters == -1,
+                       Gudhi::multi_filtration::One_critical_filtration<value_type>,
+                       Gudhi::multi_filtration::One_critical_filtration_with_n_parameters<value_type, num_parameters>>>;
 
-template <bool is_vine,
-          bool is_kcritical,
-          typename value_type,
-          Available_columns col = Available_columns::INTRUSIVE_SET>
-using MatrixTrucPythonInterface = Gudhi::multiparameter::interface::
-    Truc<Matrix_interface<is_vine, col>, PresentationStructure, filtration_options<is_kcritical, value_type>>;
+// template <bool is_vine,
+//           bool is_kcritical,
+//           typename value_type,
+//           Available_columns col = Available_columns::INTRUSIVE_SET>
+// using MatrixTrucPythonInterface = Gudhi::multiparameter::interface::
+//     Truc<Matrix_interface<is_vine, col>, PresentationStructure, filtration_options<is_kcritical, value_type>>;
 
 enum class BackendsEnum { Matrix, Graph, Clement, GudhiCohomology };
 
@@ -127,6 +131,10 @@ template <BackendsEnum backend,
           bool is_vine,
           bool is_kcritical,
           typename value_type,
-          Available_columns col = Available_columns::INTRUSIVE_SET>
-using TrucPythonInterface = Gudhi::multiparameter::interface::
-    Truc<PersBackendOpts<backend, is_vine, col>, StructureStuff<backend>, filtration_options<is_kcritical, value_type>>;
+          Available_columns col = Available_columns::INTRUSIVE_SET,
+          int num_parameters = -1,
+          bool fix = false>
+using TrucPythonInterface = Gudhi::multiparameter::interface::Truc<PersBackendOpts<backend, is_vine, col>,
+                                                                   StructureStuff<backend>,
+                                                                   filtration_options<is_kcritical, value_type, num_parameters>,
+                                                                   fix ? num_parameters : -1>;

@@ -138,8 +138,8 @@ class Line {
    * @tparam U Type of the time parameter.
    * @param x Origin of the closed positive cone.
    */
-  template <typename U = T>
-  U compute_forward_intersection(const Point &x) const {
+  template <typename U = T, class Other_point = Point>
+  U compute_forward_intersection(const Other_point &x) const {
     GUDHI_CHECK(direction_.empty() || direction_.size() == x.size(), "x has not as many parameters as the line.");
 
     constexpr const U inf =
@@ -189,8 +189,8 @@ class Line {
    * @tparam U Type of the time parameter.
    * @param x Origin of the open negative cone.
    */
-  template <typename U = T>
-  U compute_backward_intersection(const Point &x) const {
+  template <typename U = T, class Other_point = Point>
+  U compute_backward_intersection(const Other_point &x) const {
     constexpr const U inf =
         std::numeric_limits<U>::has_infinity ? std::numeric_limits<U>::infinity() : std::numeric_limits<U>::max();
     if (x.is_plus_inf()) return inf;

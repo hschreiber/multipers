@@ -449,9 +449,9 @@ void get_hilbert_surface_python(python_interface::Simplex_tree_multi_interface<F
 ///
 ///
 
-template <typename PersBackend, typename Structure, typename Filtration, typename dtype, typename index_type>
+template <typename PersBackend, typename Structure, typename Filtration, int N, typename dtype, typename index_type>
 inline void compute_2d_hilbert_surface(
-    tbb::enumerable_thread_specific<std::pair<typename interface::Truc<PersBackend, Structure, Filtration>::ThreadSafe,
+    tbb::enumerable_thread_specific<std::pair<typename interface::Truc<PersBackend, Structure, Filtration, N>::ThreadSafe,
                                               std::vector<index_type>>> &thread_stuff,
     const tensor::static_tensor_view<dtype, index_type> &out,  // assumes its a zero tensor
     const std::vector<index_type> grid_shape,
@@ -495,7 +495,7 @@ inline void compute_2d_hilbert_surface(
       for (auto stuff : fixed_values) std::cout << stuff << " ";
       std::cout << "]" << std::endl;
     }
-    using bc_type = typename interface::Truc<PersBackend, Structure, Filtration>::split_barcode;
+    using bc_type = typename interface::Truc<PersBackend, Structure, Filtration, N>::split_barcode;
     if constexpr (PersBackend::is_vine) {
       if (!slicer.has_persistence()) [[unlikely]] {
         slicer.compute_persistence();
@@ -564,9 +564,9 @@ inline void compute_2d_hilbert_surface(
   return;
 }
 
-template <typename PersBackend, typename Structure, typename Filtration, typename dtype, typename index_type>
+template <typename PersBackend, typename Structure, typename Filtration, int N, typename dtype, typename index_type>
 void _rec_get_hilbert_surface(
-    tbb::enumerable_thread_specific<std::pair<typename interface::Truc<PersBackend, Structure, Filtration>::ThreadSafe,
+    tbb::enumerable_thread_specific<std::pair<typename interface::Truc<PersBackend, Structure, Filtration, N>::ThreadSafe,
                                               std::vector<index_type>>> &thread_stuff,
     const tensor::static_tensor_view<dtype, index_type> &out,  // assumes its a zero tensor
     const std::vector<index_type> grid_shape,
@@ -587,7 +587,7 @@ void _rec_get_hilbert_surface(
     std::cout << ")." << std::endl;
   }
   if (coordinates_to_compute.size() == 2) {
-    compute_2d_hilbert_surface<PersBackend, Structure, Filtration, dtype, index_type>(thread_stuff,
+    compute_2d_hilbert_surface<PersBackend, Structure, Filtration, N, dtype, index_type>(thread_stuff,
                                                                                       out,  // assumes its a zero tensor
                                                                                       grid_shape,
                                                                                       degrees,
@@ -606,7 +606,7 @@ void _rec_get_hilbert_surface(
     // Updates fixes values that defines the slice
     std::vector<index_type> _fixed_values = fixed_values;  // TODO : do not copy this //thread local
     _fixed_values[coordinate_to_iterate] = z;
-    _rec_get_hilbert_surface<PersBackend, Structure, Filtration, dtype, index_type>(
+    _rec_get_hilbert_surface<PersBackend, Structure, Filtration, N, dtype, index_type>(
         thread_stuff, out, grid_shape, degrees, coordinates_to_compute, _fixed_values, mobius_inverion, zero_pad);
   });
   // rmq : with mobius_inversion + rec, the coordinates to compute size is 2 =>
@@ -614,8 +614,8 @@ void _rec_get_hilbert_surface(
   // => inversion is only needed for coords > 2
 }
 
-template <typename PersBackend, typename Structure, typename Filtration, typename dtype, typename index_type>
-void get_hilbert_surface(interface::Truc<PersBackend, Structure, Filtration> &slicer,
+template <typename PersBackend, typename Structure, typename Filtration, int N, typename dtype, typename index_type>
+void get_hilbert_surface(interface::Truc<PersBackend, Structure, Filtration, N> &slicer,
                          const tensor::static_tensor_view<dtype, index_type> &out,  // assumes its a zero tensor
                          const std::vector<index_type> &grid_shape,
                          const std::vector<index_type> &degrees,
@@ -627,7 +627,7 @@ void get_hilbert_surface(interface::Truc<PersBackend, Structure, Filtration> &sl
   // wrapper arount the rec version, that initialize the thread variables.
   if (coordinates_to_compute.size() < 2)
     throw std::logic_error("Not implemented for " + std::to_string(coordinates_to_compute.size()) + "<2 parameters.");
-  using ThreadSafe = typename interface::Truc<PersBackend, Structure, Filtration>::ThreadSafe;
+  using ThreadSafe = typename interface::Truc<PersBackend, Structure, Filtration, N>::ThreadSafe;
   ThreadSafe slicer_thread(slicer);
   std::vector<index_type> coordinates_container(slicer_thread.num_parameters() + 1);  // +1 for degree
   // coordinates_container.reserve(fixed_values.size()+1);
@@ -637,17 +637,18 @@ void get_hilbert_surface(interface::Truc<PersBackend, Structure, Filtration> &sl
   tbb::enumerable_thread_specific<std::pair<ThreadSafe, std::vector<index_type>>> thread_stuff(
       thread_data_initialization);  // this has a fixed size, so
                                     // init should be benefic
-  _rec_get_hilbert_surface<PersBackend, Structure, Filtration, dtype, index_type>(
+  _rec_get_hilbert_surface<PersBackend, Structure, Filtration, N, dtype, index_type>(
       thread_stuff, out, grid_shape, degrees, coordinates_to_compute, fixed_values, mobius_inverion, zero_pad);
 }
 
 template <typename PersBackend,
           typename Structure,
           typename Filtration,
+          int N,
           typename dtype,
           typename indices_type,
           typename... Args>
-void get_hilbert_surface_python(interface::Truc<PersBackend, Structure, Filtration> &slicer,
+void get_hilbert_surface_python(interface::Truc<PersBackend, Structure, Filtration, N> &slicer,
                                 dtype *data_ptr,
                                 std::vector<indices_type> grid_shape,
                                 const std::vector<indices_type> degrees,
@@ -696,11 +697,12 @@ void get_hilbert_surface_python(interface::Truc<PersBackend, Structure, Filtrati
 template <typename PersBackend,
           typename Structure,
           typename Filtration,
+          int N,
           typename dtype,
           typename indices_type,
           typename... Args>
 std::pair<std::vector<std::vector<indices_type>>, std::vector<dtype>> get_hilbert_signed_measure(
-    interface::Truc<PersBackend, Structure, Filtration> &slicer,
+    interface::Truc<PersBackend, Structure, Filtration, N> &slicer,
     dtype *data_ptr,
     std::vector<indices_type> grid_shape,
     const std::vector<indices_type> degrees,

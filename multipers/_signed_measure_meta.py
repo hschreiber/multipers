@@ -132,7 +132,7 @@ def signed_measure(
     assert (
         not plot or filtered_complex.num_parameters == 2
     ), "Can only plot 2d measures."
-
+    
     if grid is None:
         if not filtered_complex.is_squeezed:
             grid = compute_grid(
@@ -140,7 +140,7 @@ def signed_measure(
             )
         else:
             grid = tuple(np.asarray(f) for f in filtered_complex.filtration_grid)
-
+    
     if mass_default is None:
         mass_default = mass_default
     elif isinstance(mass_default, str):
@@ -165,7 +165,7 @@ def signed_measure(
             print("Done.")
     else:
         filtered_complex_ = filtered_complex.copy()
-
+    
     # assert filtered_complex_.is_squeezed
     if None not in degrees:
         if is_slicer(filtered_complex_) and filtered_complex_.is_minpres:

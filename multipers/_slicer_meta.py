@@ -85,13 +85,29 @@ def _slicer_from_blocks(
     is_kcritical: bool,
     dtype: type,
     col: _column_type,
+    is_flat: bool
 ):
     boundary, dimensions, multifiltrations = _blocks2boundary_dimension_grades(
         blocks,
         inplace=False,
         is_kcritical=is_kcritical,
     )
-    slicer = mps.get_matrix_slicer(vineyard, is_kcritical, dtype, col, pers_backend)(
+    num_parameters = -1
+    if not is_kcritical:
+        for b in blocks:
+            if len(b[0]) > 0:
+                if is_kcritical:
+                    num_parameters = np.asarray(b[0][0]).shape[1]
+                else:
+                    num_parameters = np.asarray(b[0]).shape[1]
+                break
+        if num_parameters != 2:
+            num_parameters = -1
+    if num_parameters == -1:
+        if is_flat:
+            print("'is_flat' was forcefully put to False as it was not compatible with other arguments: _slicer_from_blocks, num_parameters=" + str(num_parameters) + ", is_kcritical=" + str(is_kcritical))
+        is_flat = False
+    slicer = mps.get_matrix_slicer(vineyard, is_kcritical, dtype, col, pers_backend, num_parameters, is_flat)(
         boundary, dimensions, multifiltrations
     )
     return slicer
@@ -108,6 +124,7 @@ def Slicer(
     backend: Optional[_valid_pers_backend] = None,
     max_dim: Optional[int] = None,
     return_type_only: bool = False,
+    is_flat: bool = True
 ) -> mps.Slicer_type:
     """
     Given a simplextree or blocks (a.k.a scc for python),
@@ -149,12 +166,27 @@ def Slicer(
         column_type = "INTRUSIVE_SET" if column_type is None else column_type
         backend = "Matrix" if backend is None else backend
 
+    if (not is_kcritical) and (is_slicer(st) or is_simplextree_multi(st)):
+        num_parameters = st.num_parameters
+        if num_parameters != 2:
+            num_parameters = -1
+    else:
+        num_parameters = -1
+    # num_parameters = -1
+
+    if is_kcritical or num_parameters==-1:
+        if is_flat:
+            print("'is_flat' was forcefully put to False as it was not compatible with other arguments: Slicer, num_parameters=" + str(num_parameters) + ", is_kcritical=" + str(is_kcritical))
+        is_flat = False
+
     _Slicer = mps.get_matrix_slicer(
         is_vineyard=vineyard,
         is_k_critical=is_kcritical,
         dtype=dtype,
         col=column_type,
         pers_backend=backend,
+        num_parameters=num_parameters,
+        is_flat=is_flat,
     )
     if return_type_only:
         return _Slicer
@@ -198,7 +230,7 @@ You can try using `multipers.slicer.to_simplextree`."""
             else:
                 blocks = st
             slicer = _slicer_from_blocks(
-                blocks, backend, vineyard, is_kcritical, dtype, column_type
+                blocks, backend, vineyard, is_kcritical, dtype, column_type, is_flat
             )
         if filtration_grid is not None:
             slicer.filtration_grid = filtration_grid

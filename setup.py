@@ -70,12 +70,14 @@ cython_modules = [
     "multiparameter_module_approximation",
     "point_measure",
     "grids",
-    "slicer",
+    "slicer"
 ]
 
 templated_cython_modules = [
     "filtration_conversions.pxd",
     "slicer.pxd",
+    "filtrations.pxd",
+    "flat_2d_matrix.pxd",
     "mma_structures.pyx",
     "simplex_tree_multi.pyx",
     "slicer.pyx",

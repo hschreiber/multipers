@@ -14,6 +14,59 @@
 #include <iomanip>
 #include <cmath>
 
+template<class Filtration_value>
+auto _read_fil_from_line(const std::string& line, std::size_t end, int) -> decltype(&Filtration_value::reserve, Filtration_value())
+{
+  Filtration_value res(0);
+  res.reserve(end);
+  bool isPlusInf = true;
+  bool isMinusInf = true;
+  std::size_t current = line.find_first_not_of(' ', 0);
+  while (current < end) {
+    std::size_t next = line.find_first_of(' ', current);
+    res.push_back(std::stod(line.substr(current, next - current)));
+    if (isPlusInf && res.back() != Filtration_value::T_inf) isPlusInf = false;
+    if (isMinusInf && res.back() != -Filtration_value::T_inf) isMinusInf = false;
+    current = line.find_first_not_of(' ', next);
+  }
+  if (isPlusInf) res = Filtration_value::inf();
+  if (isMinusInf) res = Filtration_value::minus_inf();
+  return res;
+}
+
+template<class Filtration_value>
+auto _read_fil_from_line(const std::string& line, std::size_t end, long) -> decltype(&Filtration_value::fill, Filtration_value())
+{
+  Filtration_value res;
+  std::size_t current = line.find_first_not_of(' ', 0);
+  std::size_t i = 0;
+  while (current < end) {
+    if (i >= res.size()) throw std::invalid_argument("Filtration value has the wrong number of parameters.");
+    std::size_t next = line.find_first_of(' ', current);
+    res[i++] = std::stod(line.substr(current, next - current));
+    current = line.find_first_not_of(' ', next);
+  }
+  return res;
+}
+
+template<class Filtration_value>
+auto _write_fil_to_file(const Filtration_value& fil, int numberOfParameters, std::ofstream& file, int) -> decltype(&Filtration_value::reserve, void())
+{
+  if (fil.is_finite()) {
+    assert(fil.size() == static_cast<unsigned int>(numberOfParameters));
+    for (auto f : fil) file << f << " ";
+  } else {
+    assert(fil.size() == 1);
+    for (int p = 0; p < numberOfParameters; ++p) file << fil[0] << " ";
+  }
+}
+
+template<class Filtration_value>
+auto _write_fil_to_file(const Filtration_value& fil, int numberOfParameters, std::ofstream& file, long) -> decltype(&Filtration_value::fill, void())
+{
+  for (auto f : fil) file << f << " ";
+}
+
 template <class Slicer>
 inline Slicer read_scc_file(const std::string& inFilePath,
                             bool isRivetCompatible = false,
@@ -108,21 +161,7 @@ inline Slicer read_scc_file(const std::string& inFilePath,
       return res;
     };
     auto get_filtration_value = [](const std::string& line, std::size_t end)->Filtration_value{
-      Filtration_value res(0);
-      res.reserve(end);
-      bool isPlusInf = true;
-      bool isMinusInf = true;
-      std::size_t current = line.find_first_not_of(' ', 0);
-      while (current < end) {
-        std::size_t next = line.find_first_of(' ', current);
-        res.push_back(std::stod(line.substr(current, next - current)));
-        if (isPlusInf && res.back() != Filtration_value::T_inf) isPlusInf = false;
-        if (isMinusInf && res.back() != -Filtration_value::T_inf) isMinusInf = false;
-        current = line.find_first_not_of(' ', next);
-      }
-      if (isPlusInf) res = Filtration_value::inf();
-      if (isMinusInf) res = Filtration_value::minus_inf();
-      return res;
+      return _read_fil_from_line<Filtration_value>(line, end, 0);
     };
 
     std::vector<std::vector<unsigned int> > generator_maps(numberOfCells);
@@ -225,14 +264,8 @@ inline void write_scc_file(const std::string& outFilePath,
   if (maxIndex < -1) maxIndex = -1;
   if (rivetCompatible || IgnoreLastGenerators) maxIndex--;
 
-  auto print_fil_values = [&](const Filtration_value& fil) {
-    if (fil.is_finite()) {
-      assert(fil.size() == static_cast<unsigned int>(numberOfParameters));
-      for (auto f : fil) file << f << " ";
-    } else {
-      assert(fil.size() == 1);
-      for (int p = 0; p < numberOfParameters; ++p) file << fil[0] << " ";
-    }
+  auto print_fil_values = [&](const auto& fil) {
+    _write_fil_to_file(fil, numberOfParameters, file, 0);
   };
 
   if (minIndex < 0) file << 0 << " ";

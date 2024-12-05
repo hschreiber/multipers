@@ -7,21 +7,29 @@ Filtrations conversions between python and C++
 ## Value types : CTYPE, PYTHON_TYPE, short
 value_types = [
   ("int32_t", "np.int32", "i32"),
-  ("int64_t", "np.int64", "i64"),
+  # ("int64_t", "np.int64", "i64"),
   ("float", "np.float32", "f32"),
   ("double", "np.float64", "f64"),
+]
+
+number_of_parameters = [
+    (2, "p002"),
+    # (3, "p003"),
+    (-1, "pAny"),
 ]
 
 }}
 
 # Python to C++ conversions
-from multipers.filtrations cimport One_critical_filtration,Multi_critical_filtration
+from multipers.filtrations cimport *
 from libcpp.vector cimport vector
 from libcpp cimport bool
 cimport numpy as cnp
 import numpy as np
 from libc.stdint cimport int32_t, int64_t
 from cython.operator cimport dereference
+
+from multipers.flat_2d_matrix cimport *
 
 {{for CTYPE, PYTYPE, SHORT in value_types}}
 ###### ------------------- PY TO CPP
@@ -47,7 +55,6 @@ cdef inline One_critical_filtration[{{CTYPE}}] _py21c_{{SHORT}}(object filtratio
           out.push_back(filtration[i])
     return out
 
-
 cdef inline vector[One_critical_filtration[{{CTYPE}}]] _py2v1c_{{SHORT}}(object filtrations_):
     cdef {{CTYPE}}[:,:] filtrations = np.asarray(filtrations_, dtype={{PYTYPE}})
     cdef vector[One_critical_filtration[{{CTYPE}}]] out
@@ -55,6 +62,26 @@ cdef inline vector[One_critical_filtration[{{CTYPE}}]] _py2v1c_{{SHORT}}(object 
     for i in range(filtrations.shape[0]):
         out.push_back(_py21c_{{SHORT}}(filtrations[i,:]))
     return out
+
+{{for PVALUE, PSHORT in number_of_parameters}}
+{{if PVALUE != -1}}
+cdef inline One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}} _py21c_{{PSHORT}}_{{SHORT}}(object filtration_):
+    cdef {{CTYPE}}[:] filtration = np.asarray(filtration_, dtype={{PYTYPE}})
+    cdef One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}} out
+    with nogil:
+      for i in range(len(filtration)):
+          out[i] = filtration[i]
+    return out
+
+cdef inline vector[One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}] _py2v1c_{{PSHORT}}_{{SHORT}}(object filtrations_):
+    cdef {{CTYPE}}[:,:] filtrations = np.asarray(filtrations_, dtype={{PYTYPE}})
+    cdef vector[One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}] out
+    out.reserve(filtrations.shape[0])
+    for i in range(filtrations.shape[0]):
+        out.push_back(_py21c_{{PSHORT}}_{{SHORT}}(filtrations[i,:]))
+    return out
+{{endif}}
+{{endfor}}
 
 
 ###### ------------------- CPP to PY
@@ -80,6 +107,33 @@ cdef inline  _vff21cview_{{SHORT}}(vector[One_critical_filtration[{{CTYPE}}]]& x
 cdef inline  _vff2kcview_{{SHORT}}(vector[Multi_critical_filtration[{{CTYPE}}]]& x, bool copy = False, int duplicate=0):
   cdef Py_ssize_t num_stuff = x.size()
   return [_ff2kcview_{{SHORT}}(&(x[i]), copy=copy, duplicate=duplicate) for i in range(num_stuff)]
+
+{{for PVALUE, PSHORT in number_of_parameters}}
+{{if PVALUE != -1}}
+cdef inline _ff21cview_{{PSHORT}}_{{SHORT}}(One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}* x, bool copy=False, int duplicate=0):
+  cdef Py_ssize_t num_parameters = dereference(x).num_parameters()
+  if copy and duplicate and not dereference(x).is_finite():
+    return np.full(shape=duplicate, fill_value=dereference(x)[0])
+  cdef {{CTYPE}}[:] x_view = <{{CTYPE}}[:num_parameters]>(&(dereference(x)[0]))
+  return np.array(x_view) if copy else np.asarray(x_view)
+
+cdef inline _ff21cview_{{PSHORT}}_{{SHORT}}_flat(Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}.value_type x, bool copy=False, int duplicate=0):
+  cdef Py_ssize_t num_parameters = x.num_parameters()
+  if copy and duplicate and not x.is_finite():
+    return np.full(shape=duplicate, fill_value=x[0])
+  cdef {{CTYPE}}[:] x_view = <{{CTYPE}}[:num_parameters]>(&(x[0]))
+  return np.array(x_view) if copy else np.asarray(x_view)
+
+
+cdef inline  _vff21cview_{{PSHORT}}_{{SHORT}}(vector[One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}]& x, bool copy = False, int duplicate=0):
+  cdef Py_ssize_t num_stuff = x.size()
+  return [_ff21cview_{{PSHORT}}_{{SHORT}}(&(x[i]), copy=copy, duplicate=duplicate) for i in range(num_stuff)]
+
+cdef inline  _vff21cview_{{PSHORT}}_{{SHORT}}_flat(Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}& x, bool copy = False, int duplicate=0):
+  cdef Py_ssize_t num_stuff = x.size()
+  return [_ff21cview_{{PSHORT}}_{{SHORT}}_flat(x[i], copy=copy, duplicate=duplicate) for i in range(num_stuff)]
+{{endif}}
+{{endfor}}
 
 {{endfor}}
 

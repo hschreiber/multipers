@@ -162,10 +162,11 @@ void compute_rank_invariant_python(
 template <class PersBackend,
           class Structure,
           class MultiFiltration = Gudhi::multi_filtration::One_critical_filtration<float>,
+          int N,
           typename dtype,
           typename index_type>
 inline void compute_2d_rank_invariant_of_elbow(
-    typename interface::Truc<PersBackend, Structure, MultiFiltration>::ThreadSafe &slicer,  // truc slicer
+    typename interface::Truc<PersBackend, Structure, MultiFiltration, N>::ThreadSafe &slicer,  // truc slicer
     const tensor::static_tensor_view<dtype, index_type> &out,                               // assumes its a zero tensor
     const index_type I,
     const index_type J,
@@ -208,7 +209,7 @@ inline void compute_2d_rank_invariant_of_elbow(
   // TODO : use slicer::ThreadSafe instead of maintaining one_pers & order
   // BUG : This will break as soon as slicer interface change
 
-  using bc_type = typename interface::Truc<PersBackend, Structure, MultiFiltration>::split_barcode;
+  using bc_type = typename interface::Truc<PersBackend, Structure, MultiFiltration, N>::split_barcode;
   bc_type barcodes;
   if constexpr (PersBackend::is_vine) {
     // slicer.set_one_filtration(one_persistence);
@@ -270,10 +271,11 @@ inline void compute_2d_rank_invariant_of_elbow(
 template <class PersBackend,
           class Structure,
           class MultiFiltration = Gudhi::multi_filtration::One_critical_filtration<float>,
+          int N,
           typename dtype,
           typename index_type>
 inline void compute_2d_rank_invariant(
-    interface::Truc<PersBackend, Structure, MultiFiltration> &slicer,
+    interface::Truc<PersBackend, Structure, MultiFiltration, N> &slicer,
     const tensor::static_tensor_view<dtype, index_type> &out,  // assumes its a zero tensor
     const std::vector<index_type> &grid_shape,
     const std::vector<index_type> &degrees,
@@ -286,14 +288,14 @@ inline void compute_2d_rank_invariant(
     std::cout << "Shape " << grid_shape[0] << " " << grid_shape[1] << " " << grid_shape[2] << " " << grid_shape[3]
               << " " << grid_shape[4] << std::endl;
 
-  using ThreadSafe = typename interface::Truc<PersBackend, Structure, MultiFiltration>::ThreadSafe;
+  using ThreadSafe = typename interface::Truc<PersBackend, Structure, MultiFiltration, N>::ThreadSafe;
   ThreadSafe slicer_thread(slicer);
   tbb::enumerable_thread_specific<ThreadSafe> thread_locals(slicer_thread);
   tbb::parallel_for(0, X, [&](index_type I) {
     tbb::parallel_for(0, Y, [&](index_type J) {
       if constexpr (verbose) std::cout << "Computing elbow " << I << " " << J << "...";
       ThreadSafe &slicer = thread_locals.local();
-      compute_2d_rank_invariant_of_elbow<PersBackend, Structure, MultiFiltration, dtype, index_type>(
+      compute_2d_rank_invariant_of_elbow<PersBackend, Structure, MultiFiltration, N, dtype, index_type>(
           slicer, out, I, J, grid_shape, degrees, flip_death);
       if constexpr (verbose) std::cout << "Done!" << std::endl;
     });
@@ -303,9 +305,10 @@ inline void compute_2d_rank_invariant(
 template <class PersBackend,
           class Structure,
           class MultiFiltration = Gudhi::multi_filtration::One_critical_filtration<float>,
+          int N,
           typename dtype,
           typename indices_type>
-void compute_rank_invariant_python(interface::Truc<PersBackend, Structure, MultiFiltration> slicer,
+void compute_rank_invariant_python(interface::Truc<PersBackend, Structure, MultiFiltration, N> slicer,
                                    dtype *data_ptr,
                                    const std::vector<indices_type> grid_shape,
                                    const std::vector<indices_type> degrees,
@@ -322,10 +325,11 @@ void compute_rank_invariant_python(interface::Truc<PersBackend, Structure, Multi
 template <typename PersBackend,
           typename Structure,
           typename MultiFiltration,
+          int N,
           typename dtype = int,
           typename indices_type = int>
 std::pair<std::vector<std::vector<indices_type>>, std::vector<dtype>> compute_rank_signed_measure(
-    interface::Truc<PersBackend, Structure, MultiFiltration> slicer,
+    interface::Truc<PersBackend, Structure, MultiFiltration, N> slicer,
     dtype *data_ptr,
     const std::vector<indices_type> grid_shape,
     const std::vector<indices_type> degrees,
