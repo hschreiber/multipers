@@ -124,6 +124,8 @@ def Slicer(
     backend: Optional[_valid_pers_backend] = None,
     max_dim: Optional[int] = None,
     return_type_only: bool = False,
+    two_param: bool = False,
+    force_dynamic_parameter_nber: bool = False,
     is_flat: bool = True
 ) -> mps.Slicer_type:
     """
@@ -166,13 +168,16 @@ def Slicer(
         column_type = "INTRUSIVE_SET" if column_type is None else column_type
         backend = "Matrix" if backend is None else backend
 
-    if (not is_kcritical) and (is_slicer(st) or is_simplextree_multi(st)):
-        num_parameters = st.num_parameters
-        if num_parameters != 2:
-            num_parameters = -1
-    else:
+    num_parameters = -1
+    if two_param:
+        num_parameters = 2
+    if force_dynamic_parameter_nber or is_kcritical:
         num_parameters = -1
-    # num_parameters = -1
+    else:
+        if is_slicer(st) or is_simplextree_multi(st):
+            num_parameters = st.num_parameters
+            if st.num_parameters != 2:
+                num_parameters = -1
 
     if is_kcritical or num_parameters==-1:
         if is_flat:

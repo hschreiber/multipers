@@ -33,6 +33,8 @@ class PointCloud2FilteredComplex(BaseEstimator, TransformerMixin):
             Literal["slicer", "simplextree", "slicer_vine", "slicer_novine"]
         ] = None,
         reduce_degrees: Optional[Iterable[int]] = None,
+        force_dynamic_parameter_nber: bool = False,
+        is_flat: bool = True,
     ) -> None:
         """
         (Rips or Alpha or Delaunay) + (Density Estimation or DTM) 1-critical 2-filtration.
@@ -77,6 +79,8 @@ class PointCloud2FilteredComplex(BaseEstimator, TransformerMixin):
         self._output_type = None
         self.reduce_degrees = reduce_degrees
         self._vineyard = None
+        self.force_dynamic_parameter_nber = force_dynamic_parameter_nber
+        self.is_flat = is_flat
 
         assert (
             output_type != "simplextree" or reduce_degrees is None
@@ -153,7 +157,9 @@ class PointCloud2FilteredComplex(BaseEstimator, TransformerMixin):
             if self.verbose:
                 print("")
             if self._output_type == "slicer":
-                st = mp.Slicer(st, vineyard=self._vineyard)
+                st = mp.Slicer(st, vineyard=self._vineyard, 
+                                force_dynamic_parameter_nber = self.force_dynamic_parameter_nber, 
+                                is_flat=self.is_flat)
                 if self.reduce_degrees is not None:
                     st = mp.slicer.minimal_presentation(
                         st, degrees=self.reduce_degrees, vineyard=self._vineyard
@@ -187,7 +193,9 @@ class PointCloud2FilteredComplex(BaseEstimator, TransformerMixin):
             # alligned_codensity = np.array([codensity[i] if i in vertices else np.nan for i in range(max_vertices)])
             st_copy.fill_lowerstar(alligned_codensity, parameter=1)
         if "slicer" in self._output_type:
-            sts2 = (mp.Slicer(st, vineyard=self._vineyard) for st in sts)
+            sts2 = (mp.Slicer(st, vineyard=self._vineyard, 
+                                force_dynamic_parameter_nber = self.force_dynamic_parameter_nber, 
+                                is_flat=self.is_flat) for st in sts)
             if self.reduce_degrees is not None:
                 sts = tuple(
                     mp.slicer.minimal_presentation(

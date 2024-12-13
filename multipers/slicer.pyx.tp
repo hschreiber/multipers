@@ -631,6 +631,8 @@ def from_function_delaunay(
     dtype=np.float64,
     bool verbose = False,
     bool clear = True,
+    bool force_dynamic_parameter_nber = False,
+    bool is_flat = True
 ):
     """
     Given points in $\mathbb R^n$ and function grades, compute the function-delaunay
@@ -642,7 +644,10 @@ def from_function_delaunay(
     backend : slicer backend, e.g. "matrix", "clement"
     vineyard : bool, use a vineyard-compatible backend
     """
-    s = multipers.Slicer(None, backend=backend, vineyard=vineyard, dtype=dtype)
+    s = multipers.Slicer(None, backend=backend, vineyard=vineyard, dtype=dtype, 
+                two_param=True,
+                force_dynamic_parameter_nber=force_dynamic_parameter_nber,
+                is_flat=is_flat)
     mio.function_delaunay_presentation_to_slicer(s, points, grades, degree=degree, verbose=verbose,clear=clear)
     if degree >= 0:
         s.minpres_degree = degree
@@ -679,6 +684,8 @@ def minimal_presentation(
         dtype=None,
         int n_jobs = -1,
         bool force=False,
+        bool force_dynamic_parameter_nber = False,
+        bool is_flat = True,
         **minpres_kwargs
         ):
     """
@@ -707,7 +714,10 @@ def minimal_presentation(
         dtype = slicer.dtype
     dimension = slicer.dimension - degree # latest  = L-1, which is empty, -1 for degree 0, -2 for degree 1 etc.
     slicer.to_scc(path=mio.input_path+id, strip_comments=True, degree=degree-1)
-    new_slicer = multipers.Slicer(None,backend=slicer_backend, vineyard=vineyard, dtype=dtype)
+    new_slicer = multipers.Slicer(None,backend=slicer_backend, vineyard=vineyard, dtype=dtype, 
+                two_param=True,
+                force_dynamic_parameter_nber=force_dynamic_parameter_nber,
+                is_flat=is_flat)
     if backend=="mpfree":
         shift_dimension=degree-1
     else:

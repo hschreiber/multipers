@@ -39,6 +39,10 @@ def signed_measure(
     clean: Optional[bool] = None,
     vineyard: bool = False,
     grid_conversion: Optional[Iterable] = None,
+    #only used when filtered_complex is st
+    force_dynamic_parameter_nber: bool = False,
+    #only used when filtered_complex is st
+    is_flat: bool = True,
     **infer_grid_kwargs,
 ) -> list[tuple[np.ndarray, np.ndarray]]:
     r"""
@@ -192,7 +196,11 @@ def signed_measure(
             if verbose:
                 print("Done.")
         if backend is not None:
-            filtered_complex_ = mp.Slicer(filtered_complex_, vineyard=vineyard)
+            filtered_complex_ = mp.Slicer(
+                filtered_complex_, vineyard=vineyard, 
+                two_param=True,
+                force_dynamic_parameter_nber=force_dynamic_parameter_nber,
+                is_flat=is_flat)
 
     fix_mass_default = mass_default is not None
     if is_slicer(filtered_complex_):

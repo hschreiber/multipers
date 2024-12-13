@@ -31,6 +31,8 @@ class FilteredComplex2MMA(BaseEstimator, TransformerMixin):
         progress=False,
         minpres_degrees: Optional[Iterable[int]] = None,
         plot: bool = False,
+        force_dynamic_parameter_nber: bool = False,
+        is_flat: bool = True,
         **persistence_kwargs,
     ) -> None:
         super().__init__()
@@ -44,6 +46,8 @@ class FilteredComplex2MMA(BaseEstimator, TransformerMixin):
         self._is_minpres = None
         self.minpres_degrees = minpres_degrees
         self.plot = plot
+        self.force_dynamic_parameter_nber = force_dynamic_parameter_nber
+        self.is_flat = is_flat
         return
 
     @staticmethod
@@ -138,7 +142,9 @@ class FilteredComplex2MMA(BaseEstimator, TransformerMixin):
                 x.expansion(self.expand_dim)
             if self.minpres_degrees is not None:
                 x = mp.slicer.minimal_presentation(
-                    mp.Slicer(x), degrees=self.minpres_degrees, vineyard=True
+                    mp.Slicer(x, 
+                                force_dynamic_parameter_nber = self.force_dynamic_parameter_nber, 
+                                is_flat=self.is_flat), degrees=self.minpres_degrees, vineyard=True
                 )
             mod = mp.module_approximation(
                 x, box=box, verbose=False, **self.persistence_args

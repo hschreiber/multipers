@@ -69,7 +69,10 @@ def module_approximation_from_slicer(
     cdef Two_parameter_module[double] mod_f64_2p
     if not slicer.is_vine:
         print(r"Got a non-vine slicer as an input. Use `vineyard=True` to remove this copy.", file=sys.stderr)
-        slicer = Slicer(slicer, vineyard=True)
+        slicer = Slicer(slicer, vineyard=True, 
+                two_param=two_param,
+                force_dynamic_parameter_nber=(not two_param),
+                is_flat=two_param)
     if two_param:
         # if slicer.dtype == np.float32:
         #     approx_mod = PyModule_2_param_f32()
@@ -215,7 +218,10 @@ Try to increase the precision parameter, or set `ignore_warning=True` to compute
 Returning the trivial module."""
         )
     if is_simplextree_multi(input):
-        input = multipers.Slicer(input,backend=slicer_backend, vineyard=True)
+        input = multipers.Slicer(input,backend=slicer_backend, vineyard=True, 
+                two_param=two_param,
+                force_dynamic_parameter_nber=(not two_param),
+                is_flat=two_param)
     assert is_slicer(input), "First argument must be a simplextree or a slicer !"
     return module_approximation_from_slicer(
             slicer=input,

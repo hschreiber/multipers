@@ -172,6 +172,8 @@ def function_rips_signed_measure(
     log_density: bool = True,
     vineyard: bool = False,
     pers_backend=None,
+    force_dynamic_parameter_nber: bool = False,
+    is_flat: bool = True
     **sm_kwargs,
 ):
     """
@@ -262,14 +264,18 @@ def function_rips_signed_measure(
         if not expand_collapse:
             st.expansion(expansion_degree)  # edge collapse
 
-        s = mp.Slicer(st, vineyard=vineyard, backend=pers_backend)
+        s = mp.Slicer(st, vineyard=vineyard, backend=pers_backend,
+                force_dynamic_parameter_nber=force_dynamic_parameter_nber,
+                is_flat=is_flat)
     elif complex == "delaunay":
         s = mp.slicer.from_function_delaunay(
             x.detach().numpy(), codensity.detach().numpy()
         )
         st = mp.slicer.to_simplextree(s)
         st.flagify(2)
-        s = mp.Slicer(st, vineyard=vineyard, backend=pers_backend).grid_squeeze(
+        s = mp.Slicer(st, vineyard=vineyard, backend=pers_backend,
+                force_dynamic_parameter_nber=force_dynamic_parameter_nber,
+                is_flat=is_flat).grid_squeeze(
             reduced_grid
         )
 
