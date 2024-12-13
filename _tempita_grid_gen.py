@@ -98,7 +98,7 @@ def get_slicer(backend_type, is_vine, is_kcritical, value_type, column_type, num
         "One_critical_filtration[" + ctype + "]"
     )
     one_fil_type2 = (
-        "One_critical_filtration_with_" + f"{num_p}" + "_parameters_" + short_type
+        "One_critical_filtration_with_" + f"{num_p}" + "_parameters[" + ctype + "]"
     )
     ONE_FIL_TYPE = one_fil_type1 if num_p == -1 else one_fil_type2
     FILTRATION_TYPE = multi_fil_type if is_kcritical else ONE_FIL_TYPE

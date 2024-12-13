@@ -46,10 +46,11 @@ from multipers.mma_structures import *
 from typing import Union
 import multipers
 import multipers.io as mio
-from multipers.slicer cimport _multiparameter_module_approximation_f32, _multiparameter_module_approximation_f64
+from multipers.slicer cimport _multiparameter_module_approximation_f32, _multiparameter_module_approximation_f64, _multiparameter_module_approximation_with_2_parameters_f32, _multiparameter_module_approximation_with_2_parameters_f64
 
 
-PyModule_type = Union[PyModule_f32, PyModule_f64]
+PyModule_type = Union[PyModule_f32, PyModule_f64, PyModule_2_param_f32, PyModule_2_param_f64]
+# PyModule_type = Union[PyModule_f64, PyModule_2_param_f64]
 
 def module_approximation_from_slicer(
         slicer:Slicer_type,
@@ -59,30 +60,48 @@ def module_approximation_from_slicer(
         bool threshold=False,
         bool verbose=False,
         list[float] direction = [],
+        bool two_param = True,
         )->PyModule_type:
-
-    cdef Module[float] mod_f32
-    cdef Module[double] mod_f64
     cdef intptr_t ptr
+    cdef Module[float] mod_f32
+    cdef Two_parameter_module[float] mod_f32_2p
+    cdef Module[double] mod_f64
+    cdef Two_parameter_module[double] mod_f64_2p
     if not slicer.is_vine:
         print(r"Got a non-vine slicer as an input. Use `vineyard=True` to remove this copy.", file=sys.stderr)
         slicer = Slicer(slicer, vineyard=True)
-
-    # if slicer.dtype == np.float32:
-    #     approx_mod = PyModule_f32()
-    #     if box is None:
-    #         box = slicer.filtration_bounds()
-    #     mod_f32 = _multiparameter_module_approximation_f32(slicer,_py21c_f32(direction), max_error,Box[float](box),threshold, complete, verbose)
-    #     ptr = <intptr_t>(&mod_f32)
-    # el
-    if slicer.dtype == np.float64:
-        approx_mod = PyModule_f64()
-        if box is None:
-            box = slicer.filtration_bounds()
-        mod_f64 = _multiparameter_module_approximation_f64(slicer,_py21c_f64(direction), max_error,Box[double](box),threshold, complete, verbose)
-        ptr = <intptr_t>(&mod_f64)
+    if two_param:
+        # if slicer.dtype == np.float32:
+        #     approx_mod = PyModule_2_param_f32()
+        #     if box is None:
+        #         box = slicer.filtration_bounds()
+        #     mod_f32_2p = _multiparameter_module_approximation_with_2_parameters_f32(slicer,_py21c_f32(direction), max_error,Box[double](box),threshold, complete, verbose)
+        #     ptr = <intptr_t>(&mod_f32_2p)
+        # el
+        if slicer.dtype == np.float64:
+            approx_mod = PyModule_2_param_f64()
+            if box is None:
+                box = slicer.filtration_bounds()
+            mod_f64_2p = _multiparameter_module_approximation_with_2_parameters_f64(slicer,_py21c_f64(direction), max_error,Box[double](box),threshold, complete, verbose)
+            ptr = <intptr_t>(&mod_f64_2p)
+        else:
+            raise ValueError(f"Slicer must be float-like. Got {slicer.dtype}.")
     else:
-        raise ValueError(f"Slicer must be float-like. Got {slicer.dtype}.")
+        # if slicer.dtype == np.float32:
+        #     approx_mod = PyModule_f32()
+        #     if box is None:
+        #         box = slicer.filtration_bounds()
+        #     mod_f32 = _multiparameter_module_approximation_f32(slicer,_py21c_f32(direction), max_error,Box[double](box),threshold, complete, verbose)
+        #     ptr = <intptr_t>(&mod_f32)
+        # el
+        if slicer.dtype == np.float64:
+            approx_mod = PyModule_f64()
+            if box is None:
+                box = slicer.filtration_bounds()
+            mod_f64 = _multiparameter_module_approximation_f64(slicer,_py21c_f64(direction), max_error,Box[double](box),threshold, complete, verbose)
+            ptr = <intptr_t>(&mod_f64)
+        else:
+            raise ValueError(f"Slicer must be float-like. Got {slicer.dtype}.")
 
     approx_mod._set_from_ptr(ptr)
 
@@ -105,6 +124,7 @@ def module_approximation(
         list[int] swap_box_coords = [],
         *,
         int n_jobs = -1,
+        bool two_param=True,
         )->PyModule_type:
     """Computes an interval module approximation of a multiparameter filtration.
 
@@ -205,6 +225,7 @@ Returning the trivial module."""
             threshold=threshold,
             verbose=verbose,
             direction=direction,
+            two_param=two_param,
             )
 
 

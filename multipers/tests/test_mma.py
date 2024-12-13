@@ -22,7 +22,7 @@ def test_img():
     simplextree = mp.SimplexTreeMulti(num_parameters=4)
     simplextree.insert([0], [1, 2, 3, 4])
     mod = simplextree.persistence_approximation(
-        box=[[0, 0, 0, 0], [5, 5, 5, 5]], max_error=1.0
+        box=[[0, 0, 0, 0], [5, 5, 5, 5]], max_error=1.0, two_param=False
     )
     img = mod.representation(resolution=6, kernel="linear")
     assert np.isclose(img[0, 2, 3, 4, 5], 0.5)

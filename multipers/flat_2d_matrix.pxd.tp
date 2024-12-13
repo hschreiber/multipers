@@ -4,14 +4,6 @@
 Flat 2D matrix for filtration values
 """
 
-## Value types : CTYPE, PYTHON_TYPE, short
-value_types = [
-    ("int32_t", "np.int32", "i32"),
-    # ("int64_t", "np.int64", "i64"),
-    ("float", "np.float32", "f32"),
-    ("double", "np.float64", "f64"),
-]
-
 number_of_parameters = [
     (2, "p002"),
     # (3, "p003"),
@@ -29,13 +21,12 @@ import numpy as np
 from libc.stdint cimport int32_t, int64_t
 from cython.operator cimport dereference
 
-{{for CTYPE, PYTYPE, SHORT in value_types}}
 {{for PVALUE, PSHORT in number_of_parameters}}
 {{if PVALUE != -1}}
 cdef extern from "gudhi/One_critical_filtration_with_n_parameters_view.h" namespace "Gudhi::multi_filtration":
-    cdef cppclass One_critical_filtration_with_{{PVALUE}}_parameters_view_{{SHORT}} "Gudhi::multi_filtration::One_critical_filtration_with_n_parameters_view<{{PVALUE}},std::vector<{{CTYPE}}> >":
+    cdef cppclass One_critical_filtration_with_{{PVALUE}}_parameters_view[T=*]:
         ## Copied from cython vector
-        ctypedef {{CTYPE}} value_type
+        ctypedef T value_type
         ctypedef size_t size_type
         ctypedef ptrdiff_t difference_type
 
@@ -141,7 +132,7 @@ cdef extern from "gudhi/One_critical_filtration_with_n_parameters_view.h" namesp
             bint operator<=(const_reverse_iterator)
             bint operator>=(reverse_iterator)
             bint operator>=(const_reverse_iterator)
-        One_critical_filtration_with_{{PVALUE}}_parameters_view_{{SHORT}}& operator=(One_critical_filtration_with_{{PVALUE}}_parameters_view_{{SHORT}}&)
+        One_critical_filtration_with_{{PVALUE}}_parameters_view& operator=(One_critical_filtration_with_{{PVALUE}}_parameters_view&)
         size_type size()
         size_type max_size()
         bint empty() nogil
@@ -163,31 +154,31 @@ cdef extern from "gudhi/One_critical_filtration_with_n_parameters_view.h" namesp
         const_reverse_iterator crend()
         const_reverse_iterator const_rend "rend"()
         void fill(const value_type&)
-        void swap(One_critical_filtration_with_{{PVALUE}}_parameters_view_{{SHORT}}&)
+        void swap(One_critical_filtration_with_{{PVALUE}}_parameters_view&)
 
-        One_critical_filtration_with_{{PVALUE}}_parameters_view_{{SHORT}}(vector[value_type]&, size_t)  except + nogil
-        One_critical_filtration_with_{{PVALUE}}_parameters_view_{{SHORT}}(One_critical_filtration_with_{{PVALUE}}_parameters_view_{{SHORT}}&) except + nogil
+        One_critical_filtration_with_{{PVALUE}}_parameters_view(vector[value_type]&, size_t)  except + nogil
+        One_critical_filtration_with_{{PVALUE}}_parameters_view(One_critical_filtration_with_{{PVALUE}}_parameters_view&) except + nogil
 
-        One_critical_filtration_with_{{PVALUE}}_parameters_view_{{SHORT}}& operator=(const One_critical_filtration_with_{{PVALUE}}_parameters_view_{{SHORT}}&) except +
-        One_critical_filtration_with_{{PVALUE}}_parameters_view_{{SHORT}}& operator=(const vector[value_type]&) except +
+        One_critical_filtration_with_{{PVALUE}}_parameters_view& operator=(const One_critical_filtration_with_{{PVALUE}}_parameters_view&) except +
+        One_critical_filtration_with_{{PVALUE}}_parameters_view& operator=(const vector[value_type]&) except +
 
         size_type num_parameters() nogil
         size_type num_generators() nogil
         # @staticmethod
         # vector[value_type]& vector[value_type]() nogil
         
-        void push_to_least_common_upper_bound(One_critical_filtration_with_{{PVALUE}}_parameters_view_{{SHORT}}&) nogil
-        void pull_to_greatest_common_lower_bound(One_critical_filtration_with_{{PVALUE}}_parameters_view_{{SHORT}}&) nogil
-        void push_to_least_common_upper_bound(One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}&) nogil
-        void pull_to_greatest_common_lower_bound(One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}&) nogil
+        void push_to_least_common_upper_bound(One_critical_filtration_with_{{PVALUE}}_parameters_view[T]&) nogil
+        void pull_to_greatest_common_lower_bound(One_critical_filtration_with_{{PVALUE}}_parameters_view[T]&) nogil
+        void push_to_least_common_upper_bound(One_critical_filtration_with_{{PVALUE}}_parameters[T]&) nogil
+        void pull_to_greatest_common_lower_bound(One_critical_filtration_with_{{PVALUE}}_parameters[T]&) nogil
 
         bool is_finite() nogil
 
-cdef extern from "gudhi/flat_2D_matrix.h" namespace "Gudhi":
-    cdef cppclass Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}} "Gudhi::Dynamic_flat_2D_matrix<{{PVALUE}},{{CTYPE}},std::vector<{{CTYPE}}>, Gudhi::multi_filtration::One_critical_filtration_with_n_parameters_view<{{PVALUE}},std::vector<{{CTYPE}}> > >":
+cdef extern from "gudhi/One_critical_filtration_with_n_parameters_view.h" namespace "Gudhi::multi_filtration":
+    cdef cppclass Flat_vector_of_filtration_values_with_{{PVALUE}}_parameters[T=*]:
         ctypedef size_t size_type
         ctypedef ptrdiff_t difference_type
-        ctypedef One_critical_filtration_with_{{PVALUE}}_parameters_view_{{SHORT}} value_type
+        ctypedef One_critical_filtration_with_{{PVALUE}}_parameters_view value_type
 
         cppclass const_iterator
         cppclass iterator:
@@ -291,16 +282,16 @@ cdef extern from "gudhi/flat_2D_matrix.h" namespace "Gudhi":
             bint operator<=(const_reverse_iterator)
             bint operator>=(reverse_iterator)
             bint operator>=(const_reverse_iterator)
-        Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}& operator=(Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}&)
-        void assign(size_type, const {{CTYPE}}&)
+        Flat_vector_of_filtration_values_with_{{PVALUE}}_parameters& operator=(Flat_vector_of_filtration_values_with_{{PVALUE}}_parameters&)
+        void assign(size_type, const T&)
         void assign(size_type, const value_type&)
         void assign[InputIt](InputIt, InputIt) except +
         value_type at(size_type) except +
         value_type operator[](size_type)
         value_type front()
         value_type back()
-        {{CTYPE}}* data()
-        const {{CTYPE}}* const_data "data"()
+        T* data()
+        const T* const_data "data"()
         iterator begin()
         const_iterator const_begin "begin"()
         const_iterator cbegin()
@@ -320,9 +311,9 @@ cdef extern from "gudhi/flat_2D_matrix.h" namespace "Gudhi":
         size_type capacity()
         void shrink_to_fit() except +
         void clear() nogil
-        iterator insert(const_iterator, const vector[{{CTYPE}}]&) except +
-        iterator insert(const_iterator, size_type, const vector[{{CTYPE}}]&) except +
-        iterator insert(const_iterator, size_type, const vector[vector[{{CTYPE}}]]&) except +
+        iterator insert(const_iterator, const vector[T]&) except +
+        iterator insert(const_iterator, size_type, const vector[T]&) except +
+        iterator insert(const_iterator, size_type, const vector[vector[T]]&) except +
         iterator insert[InputIt](const_iterator, InputIt, InputIt) except +
         iterator emplace(const_iterator, ...) except +
         iterator erase(const_iterator)
@@ -331,21 +322,20 @@ cdef extern from "gudhi/flat_2D_matrix.h" namespace "Gudhi":
         value_type emplace_back(...) except +
         void pop_back()
         void resize(size_type) except + nogil
-        void resize(size_type, const {{CTYPE}}&) except +
-        void resize(size_type, const vector[{{CTYPE}}]&) except +
-        void swap(Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}&)
+        void resize(size_type, const T&) except +
+        void resize(size_type, const vector[T]&) except +
+        void swap(Flat_vector_of_filtration_values_with_{{PVALUE}}_parameters&)
 
-        Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}()  except + nogil
-        Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}(size_t) except + nogil
-        Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}(size_t, {{CTYPE}}) except + nogil
-        Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}(size_t, const vector[{{CTYPE}}]&) except + nogil
-        Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}(const vector[{{CTYPE}}]&) except + nogil
-        Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}(const vector[vector[{{CTYPE}}]]&) except + nogil
-        Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}(const_iterator, const_iterator) except + nogil
-        Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}(Flat_vector_of_filtration_values_{{PSHORT}}_{{SHORT}}&) except + nogil
+        Flat_vector_of_filtration_values_with_{{PVALUE}}_parameters()  except + nogil
+        Flat_vector_of_filtration_values_with_{{PVALUE}}_parameters(size_t) except + nogil
+        Flat_vector_of_filtration_values_with_{{PVALUE}}_parameters(size_t, T) except + nogil
+        Flat_vector_of_filtration_values_with_{{PVALUE}}_parameters(size_t, const vector[T]&) except + nogil
+        Flat_vector_of_filtration_values_with_{{PVALUE}}_parameters(const vector[T]&) except + nogil
+        Flat_vector_of_filtration_values_with_{{PVALUE}}_parameters(const vector[vector[T]]&) except + nogil
+        Flat_vector_of_filtration_values_with_{{PVALUE}}_parameters(const_iterator, const_iterator) except + nogil
+        Flat_vector_of_filtration_values_with_{{PVALUE}}_parameters(Flat_vector_of_filtration_values_with_{{PVALUE}}_parameters&) except + nogil
 
-        {{CTYPE}}& operator()(size_t, size_t)
+        T& operator()(size_t, size_t)
 {{endif}}
-{{endfor}}
 {{endfor}}
 

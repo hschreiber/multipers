@@ -825,10 +825,11 @@ class One_critical_filtration_with_n_parameters : public std::array<T, N> {
    * @return True if and only if the value of this actually changed.
    */
   template <class GeneratorRange = std::initializer_list<value_type> >
-  bool push_to_least_common_upper_bound(const GeneratorRange &x) {
+  bool push_to_least_common_upper_bound(const GeneratorRange &x, bool exclude_infinite_values = false) {
     GUDHI_CHECK(x.size() == N, "Wrong range size. Should correspond to the number of parameters.");
     bool modified = false;
     for (unsigned int i = 0; i < N; ++i) {
+      if (exclude_infinite_values && (x[i] == T_inf || x[i] == -T_inf)) continue;
       modified |= Base::operator[](i) < x[i];
       Base::operator[](i) = x[i] > Base::operator[](i) ? x[i] : Base::operator[](i);
     }
@@ -846,10 +847,11 @@ class One_critical_filtration_with_n_parameters : public std::array<T, N> {
    * @return True if and only if the value of this actually changed.
    */
   template <class GeneratorRange = std::initializer_list<value_type> >
-  bool pull_to_greatest_common_lower_bound(const GeneratorRange &x) {
+  bool pull_to_greatest_common_lower_bound(const GeneratorRange &x, bool exclude_infinite_values = false) {
     GUDHI_CHECK(x.size() == N, "Wrong range size. Should correspond to the number of parameters.");
     bool modified = false;
     for (unsigned int i = 0; i < N; ++i) {
+      if (exclude_infinite_values && (x[i] == T_inf || x[i] == -T_inf)) continue;
       modified |= Base::operator[](i) > x[i];
       Base::operator[](i) = Base::operator[](i) > x[i] ? x[i] : Base::operator[](i);
     }
@@ -1143,6 +1145,11 @@ class One_critical_filtration_with_n_parameters : public std::array<T, N> {
     return true;
   }
 };
+
+template<typename T>
+using One_critical_filtration_with_2_parameters = One_critical_filtration_with_n_parameters<T, 2>;
+template<typename T>
+using One_critical_filtration_with_3_parameters = One_critical_filtration_with_n_parameters<T, 3>;
 
 }  // namespace Gudhi::multi_filtration
 

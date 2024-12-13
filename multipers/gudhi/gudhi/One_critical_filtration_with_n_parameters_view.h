@@ -83,6 +83,7 @@ class One_critical_filtration_with_n_parameters_view : public Row_view<N, Contai
 
   using Base::operator[];                            /**< Inheritance of entry access. */
   using value_type = typename Container::value_type; /**< Entry type. */
+  using Row = One_critical_filtration_with_n_parameters<value_type, N>;
 
   // CONSTRUCTORS
 
@@ -889,12 +890,13 @@ class One_critical_filtration_with_n_parameters_view : public Row_view<N, Contai
    * @return True if and only if the value of this actually changed.
    */
   template <class GeneratorRange = std::initializer_list<value_type> >
-  bool push_to_least_common_upper_bound(const GeneratorRange& x) {
+  bool push_to_least_common_upper_bound(const GeneratorRange& x, bool exclude_infinite_values = false) {
     GUDHI_CHECK(x.size() == N, "Wrong range size. Should correspond to the number of parameters.");
 
     bool modified = false;
     auto it = x.begin();
     for (unsigned int i = 0; i < N; ++i) {
+      if (exclude_infinite_values && (*it == T_inf || *it == -T_inf)) continue;
       modified |= Base::operator[](i) < *it;
       Base::operator[](i) = *it > Base::operator[](i) ? *it : Base::operator[](i);
       ++it;
@@ -913,12 +915,13 @@ class One_critical_filtration_with_n_parameters_view : public Row_view<N, Contai
    * @return True if and only if the value of this actually changed.
    */
   template <class GeneratorRange = std::initializer_list<value_type> >
-  bool pull_to_greatest_common_lower_bound(const GeneratorRange &x) {
+  bool pull_to_greatest_common_lower_bound(const GeneratorRange &x, bool exclude_infinite_values = false) {
     GUDHI_CHECK(x.size() == N, "Wrong range size. Should correspond to the number of parameters.");
 
     bool modified = false;
     auto it = x.begin();
     for (unsigned int i = 0; i < N; ++i) {
+      if (exclude_infinite_values && (*it == T_inf || *it == -T_inf)) continue;
       modified |= Base::operator[](i) > *it;
       Base::operator[](i) = Base::operator[](i) > *it ? *it : Base::operator[](i);
       ++it;
@@ -1241,6 +1244,20 @@ class One_critical_filtration_with_n_parameters_view : public Row_view<N, Contai
     return true;
   }
 };
+
+template <typename T>
+using One_critical_filtration_with_2_parameters_view =
+    One_critical_filtration_with_n_parameters_view<2, std::vector<T> >;
+template <typename T>
+using One_critical_filtration_with_3_parameters_view =
+    One_critical_filtration_with_n_parameters_view<3, std::vector<T> >;
+
+template <typename T>
+using Flat_vector_of_filtration_values_with_2_parameters =
+    Dynamic_flat_2D_matrix<2, T, std::vector<T>, One_critical_filtration_with_2_parameters_view<T> >;
+template <typename T>
+using Flat_vector_of_filtration_values_with_3_parameters =
+    Dynamic_flat_2D_matrix<3, T, std::vector<T>, One_critical_filtration_with_3_parameters_view<T> >;
 
 }  // namespace Gudhi::multi_filtration
 

@@ -12,6 +12,11 @@ value_types = [
   ("double", "np.float64", "f64"),
 ]
 
+module_types = [
+  ("Module", "", "Summand", "", ""),
+  ("Two_parameter_module", "_2_param", "Two_parameter_summand", "_with_2_parameters", "_p002_flat"),
+]
+
 }}
 
 
@@ -66,24 +71,33 @@ from joblib import Parallel, delayed
 
 
 {{for CTYPE, PYTYPE, SHORT in value_types}}
-cdef class PySummand_{{SHORT}}:
+{{for MTYPE, MSHORT, STYPE, SSHORT, SSHORT2 in module_types}}
+cdef class PySummand{{MSHORT}}_{{SHORT}}:
     r"""
     Stores a Summand of a PyModule
     """
-    cdef Summand[{{CTYPE}}] sum
+    cdef {{STYPE}}[{{CTYPE}}] sum
 
-    def get_birth_list(self): 
-        cdef vector[One_critical_filtration[{{CTYPE}}]] v = self.sum.get_birth_list()
-        return _vff21cview_{{SHORT}}(v, copy = True, duplicate = self.num_parameters())
+    def get_birth_list(self):
+        {{if MTYPE == 'Module'}}
+        cdef vector[One_critical_filtration{{SSHORT}}[{{CTYPE}}]] v = self.sum.get_birth_list()
+        {{else}}
+        cdef Flat_vector_of_filtration_values_with_2_parameters[{{CTYPE}}] v = self.sum.get_birth_list()
+        {{endif}}
+        return _vff21cview{{SSHORT2}}_{{SHORT}}(v, copy = True, duplicate = self.num_parameters())
 
     def get_death_list(self):
-        cdef vector[One_critical_filtration[{{CTYPE}}]] v = self.sum.get_death_list()
-        return _vff21cview_{{SHORT}}(v, copy = True, duplicate = self.num_parameters())
+        {{if MTYPE == 'Module'}}
+        cdef vector[One_critical_filtration{{SSHORT}}[{{CTYPE}}]] v = self.sum.get_death_list()
+        {{else}}
+        cdef Flat_vector_of_filtration_values_with_2_parameters[{{CTYPE}}] v = self.sum.get_death_list()
+        {{endif}}
+        return _vff21cview{{SSHORT2}}_{{SHORT}}(v, copy = True, duplicate = self.num_parameters())
     @property
     def degree(self)->int:
         return self.sum.get_dimension()
 
-    cdef set(self, Summand[{{CTYPE}}]& summand):
+    cdef set(self, {{STYPE}}[{{CTYPE}}]& summand):
         self.sum = summand
         return self
     def get_bounds(self):
@@ -96,28 +110,37 @@ cdef class PySummand_{{SHORT}}:
       return {{PYTYPE}}
 
     def num_parameters(self):
-        cdef vector[One_critical_filtration[{{CTYPE}}]] v = self.sum.get_birth_list()
+        {{if MTYPE == 'Module'}}
+        cdef vector[One_critical_filtration{{SSHORT}}[{{CTYPE}}]] v = self.sum.get_birth_list()
+        {{else}}
+        cdef Flat_vector_of_filtration_values_with_2_parameters[{{CTYPE}}] v = self.sum.get_birth_list()
+        {{endif}}
         if v[0].is_finite():
             return v[0].num_parameters()
         v = self.sum.get_death_list()
         return v[0].num_parameters()
 
-cdef inline get_summand_filtration_values_{{SHORT}}(Summand[{{CTYPE}}] summand):
+cdef inline get_summand_filtration_values{{MSHORT}}_{{SHORT}}({{STYPE}}[{{CTYPE}}] summand):
     r"""
     Returns a list (over parameter) of the filtrations values of this parameter.
     """
-    cdef vector[One_critical_filtration[{{CTYPE}}]] vb = summand.get_birth_list()
-    cdef vector[One_critical_filtration[{{CTYPE}}]] vd = summand.get_death_list()
+    {{if MTYPE == 'Module'}}
+    cdef vector[One_critical_filtration{{SSHORT}}[{{CTYPE}}]] vb = summand.get_birth_list()
+    cdef vector[One_critical_filtration{{SSHORT}}[{{CTYPE}}]] vd = summand.get_death_list()
+    {{else}}
+    cdef Flat_vector_of_filtration_values_with_2_parameters[{{CTYPE}}] vb = summand.get_birth_list()
+    cdef Flat_vector_of_filtration_values_with_2_parameters[{{CTYPE}}] vd = summand.get_death_list()
+    {{endif}}
 
     if vb[0].is_finite():
         if vd[0].is_finite():
-            pts = np.concatenate([_vff21cview_{{SHORT}}(vb, copy=True),
-                                  _vff21cview_{{SHORT}}(vd, copy=True)],axis=0)
+            pts = np.concatenate([_vff21cview{{SSHORT2}}_{{SHORT}}(vb, copy=True),
+                                  _vff21cview{{SSHORT2}}_{{SHORT}}(vd, copy=True)],axis=0)
         else:
-            pts = np.array(_vff21cview_{{SHORT}}(vb, copy=True))
+            pts = np.array(_vff21cview{{SSHORT2}}_{{SHORT}}(vb, copy=True))
     else:
         if vd[0].is_finite():
-            pts = np.array(_vff21cview_{{SHORT}}(vd, copy=True))
+            pts = np.array(_vff21cview{{SSHORT2}}_{{SHORT}}(vd, copy=True))
         else:
             return []
     
@@ -126,6 +149,7 @@ cdef inline get_summand_filtration_values_{{SHORT}}(Summand[{{CTYPE}}] summand):
     out = [f[:-1] if f[-1] == np.inf else f for f in out]
     out = [f[1:]  if f[0] == -np.inf else f for f in out]
     return out
+{{endfor}}
 
 cdef class PyBox_{{SHORT}}:
     cdef Box[{{CTYPE}}] box
@@ -152,24 +176,24 @@ cdef class PyBox_{{SHORT}}:
       return {{PYTYPE}}
 
 
-
-cdef class PyModule_{{SHORT}}:
+{{for MTYPE, MSHORT, STYPE, SSHORT, SSHORT2 in module_types}}
+cdef class PyModule{{MSHORT}}_{{SHORT}}:
     r"""
     Stores a representation of a n-persistence module.
     """
-    cdef Module[{{CTYPE}}] cmod
+    cdef {{MTYPE}}[{{CTYPE}}] cmod
     
     @property
     def dtype(self):
         return {{PYTYPE}}
 
-    cdef set(self, Module[{{CTYPE}}] m):
+    cdef set(self, {{MTYPE}}[{{CTYPE}}] m):
         self.cmod = m
-    def merge(self, PyModule_{{SHORT}} other, int dim=-1):
+    def merge(self, PyModule{{MSHORT}}_{{SHORT}} other, int dim=-1):
         r"""
         Merges two modules into one
         """
-        cdef Module[{{CTYPE}}] c_other = other.cmod
+        cdef {{MTYPE}}[{{CTYPE}}] c_other = other.cmod
         with nogil:
             for summand in c_other:
                 self.cmod.add_summand(summand, dim)
@@ -179,17 +203,17 @@ cdef class PyModule_{{SHORT}}:
         r"""
         Copy module from a memory pointer. Unsafe.
         """
-        self.cmod = move(dereference(<Module[{{CTYPE}}]*>(module_ptr)))
+        self.cmod = move(dereference(<{{MTYPE}}[{{CTYPE}}]*>(module_ptr)))
     def set_box(self, PyBox_{{SHORT}} pybox):
         cdef Box[{{CTYPE}}] cbox = pybox.box
         with nogil:
             self.cmod.set_box(cbox)
         return self
-    def get_module_of_degree(self, int degree)->PyModule_{{SHORT}}: # TODO : in c++ ?
+    def get_module_of_degree(self, int degree)->PyModule{{MSHORT}}_{{SHORT}}: # TODO : in c++ ?
         r"""
         Returns a copy of a module of fixed degree.
         """
-        pmodule = PyModule_{{SHORT}}()
+        pmodule = PyModule{{MSHORT}}_{{SHORT}}()
         cdef Box[{{CTYPE}}] c_box = self.cmod.get_box()
         pmodule.cmod.set_box(c_box) 
         with nogil:
@@ -197,11 +221,11 @@ cdef class PyModule_{{SHORT}}:
                 if summand.get_dimension() == degree:
                     pmodule.cmod.add_summand(summand)
         return pmodule
-    def get_module_of_degrees(self, degrees:Iterable[int])->PyModule_{{SHORT}}: # TODO : in c++ ?
+    def get_module_of_degrees(self, degrees:Iterable[int])->PyModule{{MSHORT}}_{{SHORT}}: # TODO : in c++ ?
         r"""
         Returns a copy of the summands of degrees in `degrees`
         """
-        pmodule = PyModule_{{SHORT}}()
+        pmodule = PyModule{{MSHORT}}_{{SHORT}}()
         cdef Box[{{CTYPE}}] c_box = self.cmod.get_box()
         pmodule.cmod.set_box(c_box)
         cdef vector[int] cdegrees = degrees
@@ -254,23 +278,23 @@ cdef class PyModule_{{SHORT}}:
         list of list, encoding the module, which can be retrieved with the function `from_dump`.
         """
         ## TODO : optimize, but not really used.
-        return dump_cmod_{{SHORT}}(self.cmod) 
+        return dump_cmod{{MSHORT}}_{{SHORT}}(self.cmod) 
     def __getstate__(self):
         return self.dump()
     def __setstate__(self,dump):
-        cdef Module[{{CTYPE}}] cmod = cmod_from_dump_{{SHORT}}(dump)
+        cdef {{MTYPE}}[{{CTYPE}}] cmod = cmod_from_dump{{MSHORT}}_{{SHORT}}(dump)
         self.cmod = cmod
         return
-    def __getitem__(self, int i) -> PySummand_{{SHORT}}:
+    def __getitem__(self, int i) -> PySummand{{MSHORT}}_{{SHORT}}:
         if i == slice(None):
             return self
-        summand = PySummand_{{SHORT}}()
+        summand = PySummand{{MSHORT}}_{{SHORT}}()
         summand.set(self.cmod.at(i % self.cmod.size()))
         return summand
     def __iter__(self):
         cdef int num_summands = self.cmod.size()
         for i in range(num_summands):
-            summand = PySummand_{{SHORT}}()
+            summand = PySummand{{MSHORT}}_{{SHORT}}()
             summand.set(self.cmod.at(i)) ## hmm copy. maybe do summand from ptr
             yield summand
 
@@ -285,7 +309,7 @@ cdef class PyModule_{{SHORT}}:
         return _ff21cview_{{SHORT}}(&cbounds.first).copy(), _ff21cview_{{SHORT}}(&cbounds.second).copy()
     def rescale(self,rescale_factors, int degree=-1):
         r"""
-        Rescales the fitlration values of the summands by this rescaling vector.
+        Rescales the filtration values of the summands by this rescaling vector.
         """
         cdef vector[{{CTYPE}}] crescale_factors = rescale_factors
         with nogil:
@@ -309,7 +333,7 @@ cdef class PyModule_{{SHORT}}:
         """
         if len(self) ==0:
             return np.empty((self.num_parameters,0))
-        values = tuple(tuple(stuff) if len(stuff:=get_summand_filtration_values_{{SHORT}}(summand)) == self.num_parameters else list(stuff) + [[]]*(self.num_parameters - len(stuff)) for summand in self.cmod)
+        values = tuple(tuple(stuff) if len(stuff:=get_summand_filtration_values{{MSHORT}}_{{SHORT}}(summand)) == self.num_parameters else list(stuff) + [[]]*(self.num_parameters - len(stuff)) for summand in self.cmod)
         try:
           values = tuple(np.concatenate([
             f[parameter]
@@ -453,9 +477,9 @@ cdef class PyModule_{{SHORT}}:
         else:
             bc = tuple(np.asarray(x).reshape(-1,2) for x in self.cmod.get_barcode2(Line[{{CTYPE}}](_py21c_{{SHORT}}(basepoint), _py21c_{{SHORT}}(direction)), degree))
         if not keep_inf:
-            bc = PyModule_{{SHORT}}._threshold_bc(bc)
+            bc = PyModule{{MSHORT}}_{{SHORT}}._threshold_bc(bc)
         if full:
-            bc = PyModule_{{SHORT}}._bc_to_full(bc, basepoint, direction)
+            bc = PyModule{{MSHORT}}_{{SHORT}}._bc_to_full(bc, basepoint, direction)
 
         return bc
 
@@ -681,20 +705,20 @@ cdef class PyModule_{{SHORT}}:
             concatenated_images = self._compute_pixels(coordinates, degrees=degrees, box=box, delta=bandwidth, p=p, normalize=normalize,n_jobs=n_jobs)
         else:
             if kernel == "linear2":
-                def todo(PyModule_{{SHORT}} mod_degree):
+                def todo(PyModule{{MSHORT}}_{{SHORT}} mod_degree):
                   x = mod_degree.distance_to(coordinates,signed=signed)
                   w = mod_degree.get_interleavings()[None]**p
                   s = np.where(x>=0,1,-1) if signed else 1 
                   x = np.abs(x)
                   return (s*np.where(x<bandwidth,(bandwidth-x)/bandwidth,0)*w).sum(1)
             elif kernel == "gaussian":
-                def todo(PyModule_{{SHORT}} mod_degree):
+                def todo(PyModule{{MSHORT}}_{{SHORT}} mod_degree):
                   x = mod_degree.distance_to(coordinates,signed=signed)
                   w = mod_degree.get_interleavings()[None]**p
                   s = np.where(x>=0,1,-1) if signed else 1 
                   return (s*np.exp( -.5*((x/bandwidth)**2))*w).sum(1)
             elif kernel == "exponential":
-                def todo(PyModule_{{SHORT}} mod_degree):
+                def todo(PyModule{{MSHORT}}_{{SHORT}} mod_degree):
                   x = mod_degree.distance_to(coordinates,signed=signed)
                   w = mod_degree.get_interleavings()[None]**p
                   s = np.where(x>=0,1,-1) if signed else 1 
@@ -710,7 +734,7 @@ cdef class PyModule_{{SHORT}}:
                     and the second argument is a weight vector (weight(summand) for summand in module).
                     Note that the distance can be signed.
                     """
-                def todo(PyModule_{{SHORT}} mod_degree):
+                def todo(PyModule{{MSHORT}}_{{SHORT}} mod_degree):
                       x = mod_degree.distance_to(coordinates,signed=signed, n_jobs=n_jobs)
                       w = mod_degree.get_interleavings()[None]**p
                       return kernel(x/bandwidth,w)
@@ -779,7 +803,7 @@ cdef class PyModule_{{SHORT}}:
         #     for truc in point:
         #         temp.push_back(<{{CTYPE}}>(truc))
         #     c_points.push_back(temp)
-        cdef Module[{{CTYPE}}] c_mod = self.cmod
+        cdef {{MTYPE}}[{{CTYPE}}] c_mod = self.cmod
         with nogil:
             c_euler = c_mod.euler_curve(c_points)
         euler = c_euler
@@ -836,28 +860,28 @@ cdef class PyModule_{{SHORT}}:
         cdef Box[{{CTYPE}}] cbox = Box[{{CTYPE}}](box)
         return np.asarray(self.cmod.get_interleavings(cbox))
 
-cdef class PyMultiDiagramPoint_{{SHORT}}:
-    cdef MultiDiagram_point[One_critical_filtration[{{CTYPE}}]] point
-    cdef set(self, MultiDiagram_point[One_critical_filtration[{{CTYPE}}]] pt):
+cdef class PyMultiDiagramPoint{{SSHORT}}_{{SHORT}}:
+    cdef MultiDiagram_point[One_critical_filtration{{SSHORT}}[{{CTYPE}}]] point
+    cdef set(self, MultiDiagram_point[One_critical_filtration{{SSHORT}}[{{CTYPE}}]] pt):
         self.point = pt
         return self
 
     def get_degree(self):
         return self.point.get_dimension()
     def get_birth(self):
-        cdef One_critical_filtration[{{CTYPE}}] v = self.point.get_birth()
-        return _ff21cview_{{SHORT}}(&v, copy=True)
+        cdef One_critical_filtration{{SSHORT}}[{{CTYPE}}] v = self.point.get_birth()
+        return _ff21cview{{SSHORT2[:-5]}}_{{SHORT}}(&v, copy=True)
     def get_death(self):
-        cdef One_critical_filtration[{{CTYPE}}] v = self.point.get_death()
-        return _ff21cview_{{SHORT}}(&v, copy=True)
+        cdef One_critical_filtration{{SSHORT}}[{{CTYPE}}] v = self.point.get_death()
+        return _ff21cview{{SSHORT2[:-5]}}_{{SHORT}}(&v, copy=True)
 
 
-cdef class PyMultiDiagram_{{SHORT}}:
+cdef class PyMultiDiagram{{SSHORT}}_{{SHORT}}:
     r"""
     Stores the diagram of a PyModule on a line
     """
-    cdef MultiDiagram[One_critical_filtration[{{CTYPE}}], {{CTYPE}}] multiDiagram
-    cdef set(self, MultiDiagram[One_critical_filtration[{{CTYPE}}], {{CTYPE}}] m):
+    cdef MultiDiagram[One_critical_filtration{{SSHORT}}[{{CTYPE}}], {{CTYPE}}] multiDiagram
+    cdef set(self, MultiDiagram[One_critical_filtration{{SSHORT}}[{{CTYPE}}], {{CTYPE}}] m):
         self.multiDiagram = m
         return self
     def get_points(self, degree:int=-1) -> np.ndarray:
@@ -871,14 +895,14 @@ cdef class PyMultiDiagram_{{SHORT}}:
         return self.multiDiagram.to_multipers(dimension)
     def __len__(self) -> int:
         return self.multiDiagram.size()
-    def __getitem__(self,i:int) -> PyMultiDiagramPoint_{{SHORT}}:
-        return PyMultiDiagramPoint_{{SHORT}}().set(self.multiDiagram.at(i % self.multiDiagram.size()))
-cdef class PyMultiDiagrams_{{SHORT}}:
+    def __getitem__(self,i:int) -> PyMultiDiagramPoint{{SSHORT}}_{{SHORT}}:
+        return PyMultiDiagramPoint{{SSHORT}}_{{SHORT}}().set(self.multiDiagram.at(i % self.multiDiagram.size()))
+cdef class PyMultiDiagrams{{SSHORT}}_{{SHORT}}:
     """
     Stores the barcodes of a PyModule on multiple lines
     """
-    cdef MultiDiagrams[One_critical_filtration[{{CTYPE}}], {{CTYPE}}] multiDiagrams
-    cdef set(self,MultiDiagrams[One_critical_filtration[{{CTYPE}}], {{CTYPE}}] m):
+    cdef MultiDiagrams[One_critical_filtration{{SSHORT}}[{{CTYPE}}], {{CTYPE}}] multiDiagrams
+    cdef set(self,MultiDiagrams[One_critical_filtration{{SSHORT}}[{{CTYPE}}], {{CTYPE}}] m):
         self.multiDiagrams = m
         return self
     def to_multipers(self):
@@ -886,9 +910,9 @@ cdef class PyMultiDiagrams_{{SHORT}}:
         return [np.asarray(summand) for summand in out]
     def __getitem__(self,i:int):
         if i >=0 :
-            return PyMultiDiagram_{{SHORT}}().set(self.multiDiagrams.at(i))
+            return PyMultiDiagram{{SSHORT}}_{{SHORT}}().set(self.multiDiagrams.at(i))
         else:
-            return PyMultiDiagram_{{SHORT}}().set(self.multiDiagrams.at( self.multiDiagrams.size() - i))
+            return PyMultiDiagram{{SSHORT}}_{{SHORT}}().set(self.multiDiagrams.at( self.multiDiagrams.size() - i))
     def __len__(self):
         return self.multiDiagrams.size()
     def get_points(self, degree:int=-1):
@@ -925,42 +949,46 @@ cdef class PyMultiDiagrams_{{SHORT}}:
         return plt.plot(*multibarcodes_)
 {{endif}}
 
-
-cdef dump_summand_{{SHORT}}(Summand[{{CTYPE}}]& summand):
-    cdef vector[One_critical_filtration[{{CTYPE}}]] births = summand.get_birth_list()
-    cdef vector[One_critical_filtration[{{CTYPE}}]] deaths = summand.get_death_list()
+cdef dump_summand{{MSHORT}}_{{SHORT}}({{STYPE}}[{{CTYPE}}]& summand):
+    {{if MTYPE == 'Module'}}
+    cdef vector[One_critical_filtration{{SSHORT}}[{{CTYPE}}]] births = summand.get_birth_list()
+    cdef vector[One_critical_filtration{{SSHORT}}[{{CTYPE}}]] deaths = summand.get_death_list()
+    {{else}}
+    cdef Flat_vector_of_filtration_values_with_2_parameters[{{CTYPE}}] births = summand.get_birth_list()
+    cdef Flat_vector_of_filtration_values_with_2_parameters[{{CTYPE}}] deaths = summand.get_death_list()
+    {{endif}}
     return (
-            _vff21cview_{{SHORT}}(births, copy=True), ## copy as local variables
-            _vff21cview_{{SHORT}}(deaths, copy=True),
+            _vff21cview{{SSHORT2}}_{{SHORT}}(births, copy=True), ## copy as local variables
+            _vff21cview{{SSHORT2}}_{{SHORT}}(deaths, copy=True),
             summand.get_dimension(),
             )
 
-cdef Summand[{{CTYPE}}] summand_from_dump_{{SHORT}}(summand_dump):
-    cdef vector[One_critical_filtration[{{CTYPE}}]] births = _py2v1c_{{SHORT}}(summand_dump[0])
-    cdef vector[One_critical_filtration[{{CTYPE}}]] deaths = _py2v1c_{{SHORT}}(summand_dump[1]) 
+cdef {{STYPE}}[{{CTYPE}}] summand_from_dump{{MSHORT}}_{{SHORT}}(summand_dump):
+    cdef vector[One_critical_filtration{{SSHORT}}[{{CTYPE}}]] births = _py2v1c{{SSHORT2[:-5]}}_{{SHORT}}(summand_dump[0])
+    cdef vector[One_critical_filtration{{SSHORT}}[{{CTYPE}}]] deaths = _py2v1c{{SSHORT2[:-5]}}_{{SHORT}}(summand_dump[1]) 
     cdef int dim = summand_dump[2]
-    return Summand[{{CTYPE}}](births,deaths,dim)
+    return {{STYPE}}[{{CTYPE}}](births,deaths,dim)
 
-cdef dump_cmod_{{SHORT}}(Module[{{CTYPE}}]& mod):
+cdef dump_cmod{{MSHORT}}_{{SHORT}}({{MTYPE}}[{{CTYPE}}]& mod):
     cdef Box[{{CTYPE}}] cbox = mod.get_box()
     cdef int dim = mod.get_dimension()
     cdef cnp.ndarray[{{CTYPE}}, ndim=1] bottom_corner = _ff21cview_{{SHORT}}(&cbox.get_lower_corner())
     cdef cnp.ndarray[{{CTYPE}}, ndim=1] top_corner = _ff21cview_{{SHORT}}(&cbox.get_upper_corner())
     box = np.asarray([bottom_corner, top_corner])
-    summands = tuple(dump_summand_{{SHORT}}(summand) for summand in mod)
+    summands = tuple(dump_summand{{MSHORT}}_{{SHORT}}(summand) for summand in mod)
     return box, summands
 
-cdef Module[{{CTYPE}}] cmod_from_dump_{{SHORT}}(module_dump):
+cdef {{MTYPE}}[{{CTYPE}}] cmod_from_dump{{MSHORT}}_{{SHORT}}(module_dump):
     box = module_dump[0]
     summands = module_dump[1]
-    cdef Module[{{CTYPE}}] out_module = Module[{{CTYPE}}]()
+    cdef {{MTYPE}}[{{CTYPE}}] out_module = {{MTYPE}}[{{CTYPE}}]()
     out_module.set_box(Box[{{CTYPE}}](box))
     for i in range(len(summands)):
-        out_module.add_summand(summand_from_dump_{{SHORT}}(summands[i]))
+        out_module.add_summand(summand_from_dump{{MSHORT}}_{{SHORT}}(summands[i]))
     return out_module
 
 
-def from_dump_{{SHORT}}(dump)->PyModule_{{SHORT}}:
+def from_dump{{MSHORT}}_{{SHORT}}(dump)->PyModule{{MSHORT}}_{{SHORT}}:
     r"""Retrieves a PyModule from a previous dump.
 
     Parameters
@@ -976,13 +1004,13 @@ def from_dump_{{SHORT}}(dump)->PyModule_{{SHORT}}:
         The retrieved module.
     """
     # TODO : optimize...
-    mod = PyModule_{{SHORT}}()
+    mod = PyModule{{MSHORT}}_{{SHORT}}()
     if type(dump) is str:
         dump = pk.load(open(dump, "rb"))
-    cdef Module[{{CTYPE}}] cmod = cmod_from_dump_{{SHORT}}(dump)
+    cdef {{MTYPE}}[{{CTYPE}}] cmod = cmod_from_dump{{MSHORT}}_{{SHORT}}(dump)
     mod.cmod = cmod
     return mod
-
+{{endfor}}
 
 {{endfor}}
 
@@ -990,12 +1018,16 @@ def from_dump_{{SHORT}}(dump)->PyModule_{{SHORT}}:
 global PyModule_type, PySummand_type
 PyModule_type = Union[
 {{for CTYPE, PYTYPE, SHORT in value_types}}
-    PyModule_{{SHORT}},
+{{for MTYPE, MSHORT, STYPE, SSHORT, SSHORT2 in module_types}}
+    PyModule{{MSHORT}}_{{SHORT}},
+{{endfor}}
 {{endfor}}
 ]
 PySummand_type = Union[
 {{for CTYPE, PYTYPE, SHORT in value_types}}
-    PySummand_{{SHORT}},
+{{for MTYPE, MSHORT, STYPE, SSHORT, SSHORT2 in module_types}}
+    PySummand{{MSHORT}}_{{SHORT}},
+{{endfor}}
 {{endfor}}
 ]
 
@@ -1008,24 +1040,30 @@ PyBox_type = Union[
 
 PyMultiDiagram_type = Union[
 {{for CTYPE, PYTYPE, SHORT in value_types}}
+{{for MTYPE, MSHORT, STYPE, SSHORT, SSHORT2 in module_types}}
 {{if SHORT[0] == 'f'}}
-    PyMultiDiagram_{{SHORT}},
+    PyMultiDiagram{{SSHORT}}_{{SHORT}},
 {{endif}}
+{{endfor}}
 {{endfor}}
 ]
 
 
 PyMultiDiagrams_type = Union[
 {{for CTYPE, PYTYPE, SHORT in value_types}}
+{{for MTYPE, MSHORT, STYPE, SSHORT, SSHORT2 in module_types}}
 {{if SHORT[0] == 'f'}}
-    PyMultiDiagrams_{{SHORT}},
+    PyMultiDiagrams{{SSHORT}}_{{SHORT}},
 {{endif}}
+{{endfor}}
 {{endfor}}
 ]
 
 def is_mma(stuff):
     return (False 
 {{for CTYPE, PYTYPE, SHORT in value_types}}
-        or isinstance(stuff,PyModule_{{SHORT}})
+{{for MTYPE, MSHORT, STYPE, SSHORT, SSHORT2 in module_types}}
+        or isinstance(stuff,PyModule{{MSHORT}}_{{SHORT}})
+{{endfor}}
 {{endfor}}
     )

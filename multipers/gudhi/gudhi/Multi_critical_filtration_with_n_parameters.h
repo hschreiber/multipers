@@ -497,7 +497,7 @@ class Multi_critical_filtration_with_n_parameters {
    * @param x The target filtration value towards which to push.
    */
   template <class GeneratorRange = std::initializer_list<T> >
-  void push_to_least_common_upper_bound(const GeneratorRange &x) {
+  void push_to_least_common_upper_bound(const GeneratorRange &x, bool exclude_infinite_values = false) {
     GUDHI_CHECK(x.size() == N, "Wrong range size. Should correspond to the number of parameters.");
 
     bool xIsInf = true, xIsMinusInf = true, xIsNaN = true;
@@ -506,7 +506,7 @@ class Multi_critical_filtration_with_n_parameters {
     // if one is not finite, we can avoid the heavy simplification process
     _get_infinity_statuses(multi_filtration_[0], x, thisIsInf, thisIsMinusInf, thisIsNaN, xIsInf, xIsMinusInf, xIsNaN);
 
-    if (thisIsInf || thisIsNaN || xIsNaN || xIsMinusInf) return;
+    if (thisIsInf || thisIsNaN || xIsNaN || xIsMinusInf || (xIsInf && exclude_infinite_values)) return;
 
     if (xIsInf || thisIsMinusInf) {
       multi_filtration_ = {x};
@@ -514,7 +514,7 @@ class Multi_critical_filtration_with_n_parameters {
     }
 
     for (Generator g : multi_filtration_) {
-      g.push_to_least_common_upper_bound(x);
+      g.push_to_least_common_upper_bound(x, exclude_infinite_values);
     }
 
     simplify();
@@ -531,7 +531,7 @@ class Multi_critical_filtration_with_n_parameters {
    * @param x The target filtration value towards which to pull.
    */
   template <class GeneratorRange = std::initializer_list<T> >
-  void pull_to_greatest_common_lower_bound(const GeneratorRange &x) {
+  void pull_to_greatest_common_lower_bound(const GeneratorRange &x, bool exclude_infinite_values = false) {
     GUDHI_CHECK(x.size() == N, "Wrong range size. Should correspond to the number of parameters.");
 
     bool xIsInf = true, xIsMinusInf = true, xIsNaN = true;
@@ -540,14 +540,14 @@ class Multi_critical_filtration_with_n_parameters {
     // if one is not finite, we can avoid the heavy simplification process
     _get_infinity_statuses(multi_filtration_[0], x, thisIsInf, thisIsMinusInf, thisIsNaN, xIsInf, xIsMinusInf, xIsNaN);
 
-    if (xIsInf || thisIsNaN || xIsNaN || thisIsMinusInf) return;
+    if (xIsInf || thisIsNaN || xIsNaN || thisIsMinusInf || (xIsMinusInf && exclude_infinite_values)) return;
 
     if (thisIsInf || xIsMinusInf) {
       multi_filtration_ = {x};
       return;
     }
     for (Generator g : multi_filtration_) {
-      g.pull_to_greatest_common_lower_bound(x);
+      g.pull_to_greatest_common_lower_bound(x, exclude_infinite_values);
     }
 
     simplify();
@@ -951,10 +951,12 @@ class Multi_critical_filtration_with_n_parameters {
     Generators new_container;
     new_container.reserve(indices.size());
     for (int i : indices) {
-      if (i == newIndex)
-        new_container.push_back(x);
-      else
+      if (i == newIndex) {
+        if (x.size() == 1) new_container.emplace_back(x[0]);
+        else new_container.push_back(x);
+      } else {
         new_container.push_back(multi_filtration_[i]);
+      }
     }
     multi_filtration_.swap(new_container);
   }

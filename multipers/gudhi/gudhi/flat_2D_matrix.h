@@ -54,6 +54,7 @@ class Row_view {
   using const_iterator = typename Container::const_iterator;
   using reverse_iterator = typename Container::reverse_iterator;
   using const_reverse_iterator = typename Container::const_reverse_iterator;
+  using Row = std::array<value_type, C>;
 
   Row_view(Container& matrix, size_type rowIndex) : matrix_(&matrix), startIndex_(rowIndex * C) {}
 
@@ -760,7 +761,7 @@ class Dynamic_flat_2D_matrix {
 
   template <class... Args>
   iterator emplace(const_iterator pos, Args&&... args) {
-    std::array<T, C> element(args...);
+    typename Row::Row element(args...);
     ++R_;
     return _to_row_iterator(container_.insert(_to_container_iterator(pos), element.begin(), element.end()));
   }
@@ -787,7 +788,7 @@ class Dynamic_flat_2D_matrix {
 
   template <class... Args>
   reference emplace_back(Args&&... args) {
-    std::array<T, C> element(args...);
+    typename Row::Row element(args...);
     ++R_;
     auto res = container_.insert(container_.end(), element.begin(), element.end());
     return Row(container_, std::distance(container_.begin(), res) / C);

@@ -21,6 +21,7 @@
 #include "multiparameter_module_approximation/format_python-cpp.h"
 
 #include <iostream>
+#include <stdexcept>
 #include <utility> // std::pair
 #include <vector>
 
@@ -203,27 +204,31 @@ public:
   void
   fill_lowerstar(const std::vector<typename Filtration::value_type> &filtration,
                  int axis) {
-    /* constexpr value_type minus_inf =
-     * -1*std::numeric_limits<value_type>::infinity(); */
-    std::vector<value_type> filtration_values_of_vertex;
-    for (auto &SimplexHandle : Base::complex_simplex_range()) {
-      auto &current_birth = Base::filtration_mutable(SimplexHandle);
-      /* value_type to_assign = minus_inf; */
-      filtration_values_of_vertex.clear();
-      for (auto vertex : Base::simplex_vertex_range(SimplexHandle)) {
-        /* to_assign = std::max(filtration[vertex], to_assign); */
-        if (std::isnan(filtration[vertex]))
-          std::cerr << "Invalid filtration for vertex " << vertex << " !!"
-                    << std::endl;
-        filtration_values_of_vertex.push_back(filtration[vertex]);
+    if constexpr (Filtration::is_multi_critical){
+      throw std::logic_error("'fill_lowerstar' is not implemented for Multi-critical filtration values yet.");
+    } else {
+      /* constexpr value_type minus_inf =
+       * -1*std::numeric_limits<value_type>::infinity(); */
+      std::vector<value_type> filtration_values_of_vertex;
+      for (auto &SimplexHandle : Base::complex_simplex_range()) {
+        auto &current_birth = Base::filtration_mutable(SimplexHandle);
+        /* value_type to_assign = minus_inf; */
+        filtration_values_of_vertex.clear();
+        for (auto vertex : Base::simplex_vertex_range(SimplexHandle)) {
+          /* to_assign = std::max(filtration[vertex], to_assign); */
+          if (std::isnan(filtration[vertex]))
+            std::cerr << "Invalid filtration for vertex " << vertex << " !!"
+                      << std::endl;
+          filtration_values_of_vertex.push_back(filtration[vertex]);
+        }
+        value_type to_assign =
+            *std::max_element(filtration_values_of_vertex.begin(),
+                              filtration_values_of_vertex.end());
+        /* if (to_assign >10 || to_assign < -10 ) */
+        /*   std::cout <<"to_assign : "<< to_assign << std::endl; */
+        current_birth[axis] = to_assign;
+        // Base::assign_filtration(SimplexHandle, current_birth);
       }
-      value_type to_assign =
-          *std::max_element(filtration_values_of_vertex.begin(),
-                            filtration_values_of_vertex.end());
-      /* if (to_assign >10 || to_assign < -10 ) */
-      /*   std::cout <<"to_assign : "<< to_assign << std::endl; */
-      current_birth[axis] = to_assign;
-      // Base::assign_filtration(SimplexHandle, current_birth);
     }
   }
 

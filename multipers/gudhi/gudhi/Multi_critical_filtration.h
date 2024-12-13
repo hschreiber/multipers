@@ -25,8 +25,10 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
+#include <type_traits>
 #include <utility>
 #include <vector>
+#include <iomanip>
 
 #include <gudhi/Debug_utils.h>
 #include <gudhi/One_critical_filtration.h>
@@ -301,21 +303,21 @@ class Multi_critical_filtration {
    *
    * @return Infinity.
    */
-  constexpr static Multi_critical_filtration inf() { return Multi_critical_filtration(Generator::inf()); }
+  constexpr static Multi_critical_filtration inf() { return Multi_critical_filtration(1, Generator::T_inf); }
 
   /**
    * @brief Returns a filtration value for which @ref is_minus_inf() returns `true`.
    *
    * @return Minus infinity.
    */
-  constexpr static Multi_critical_filtration minus_inf() { return Multi_critical_filtration(Generator::minus_inf()); }
+  constexpr static Multi_critical_filtration minus_inf() { return Multi_critical_filtration(1, -Generator::T_inf); }
 
   /**
    * @brief Returns a filtration value for which @ref is_nan() returns `true`.
    *
    * @return NaN.
    */
-  constexpr static Multi_critical_filtration nan() { return Multi_critical_filtration(Generator::nan()); }
+  constexpr static Multi_critical_filtration nan() { return Multi_critical_filtration(1, std::numeric_limits<T>::quiet_NaN()); }
 
   constexpr static bool is_multicritical() { return true; }
 
@@ -461,8 +463,8 @@ class Multi_critical_filtration {
    *
    * @param x The target filtration value towards which to push.
    */
-  void push_to_least_common_upper_bound(const Generator &x) {
-    if (this->is_plus_inf() || this->is_nan() || x.is_nan() || x.is_minus_inf()) return;
+  void push_to_least_common_upper_bound(const Generator &x, bool exclude_infinite_values = false) {
+    if (this->is_plus_inf() || this->is_nan() || x.is_nan() || x.is_minus_inf() || (x.is_plus_inf() && exclude_infinite_values)) return;
 
     GUDHI_CHECK(x.is_plus_inf() || x.num_parameters() == multi_filtration_[0].num_parameters() || !is_finite(),
                 "Pushing to a filtration value with different number of parameters.");
@@ -472,7 +474,24 @@ class Multi_critical_filtration {
       return;
     }
     for (auto &g : *this) {
-      g.push_to_least_common_upper_bound(x);
+      g.push_to_least_common_upper_bound(x, exclude_infinite_values);
+    }
+
+    simplify();
+  }
+  template <class GeneratorRange = std::initializer_list<T> >
+  void push_to_least_common_upper_bound(const GeneratorRange &x, bool exclude_infinite_values = false) {
+    if (this->is_plus_inf() || this->is_nan()) return;
+
+    GUDHI_CHECK(x.num_parameters() == multi_filtration_[0].num_parameters() || !is_finite(),
+                "Pushing to a filtration value with different number of parameters.");
+
+    if (this->is_minus_inf()) {
+      multi_filtration_ = {x};
+      return;
+    }
+    for (auto &g : *this) {
+      g.push_to_least_common_upper_bound(x, exclude_infinite_values);
     }
 
     simplify();
@@ -488,8 +507,8 @@ class Multi_critical_filtration {
    *
    * @param x The target filtration value towards which to pull.
    */
-  void pull_to_greatest_common_lower_bound(const Generator &x) {
-    if (x.is_plus_inf() || this->is_nan() || x.is_nan() || this->is_minus_inf()) return;
+  void pull_to_greatest_common_lower_bound(const Generator &x, bool exclude_infinite_values = false) {
+    if (x.is_plus_inf() || this->is_nan() || x.is_nan() || this->is_minus_inf() || (x.is_minus_inf() && exclude_infinite_values)) return;
 
     GUDHI_CHECK(x.is_minus_inf() || x.num_parameters() == multi_filtration_[0].num_parameters() || !is_finite(),
                 "Pulling to a filtration value with different number of parameters.");
@@ -499,7 +518,24 @@ class Multi_critical_filtration {
       return;
     }
     for (auto &g : *this) {
-      g.pull_to_greatest_common_lower_bound(x);
+      g.pull_to_greatest_common_lower_bound(x, exclude_infinite_values);
+    }
+
+    simplify();
+  }
+  template <class GeneratorRange = std::initializer_list<T> >
+  void pull_to_greatest_common_lower_bound(const GeneratorRange &x, bool exclude_infinite_values = false) {
+    if (this->is_nan() || this->is_minus_inf()) return;
+
+    GUDHI_CHECK(x.num_parameters() == multi_filtration_[0].num_parameters() || !is_finite(),
+                "Pulling to a filtration value with different number of parameters.");
+
+    if (this->is_plus_inf()) {
+      multi_filtration_ = {x};
+      return;
+    }
+    for (auto &g : *this) {
+      g.pull_to_greatest_common_lower_bound(x, exclude_infinite_values);
     }
 
     simplify();
@@ -987,7 +1023,7 @@ class Multi_critical_filtration {
       if (res == Rel::IS_DOMINATED || res == Rel::EQUAL) return false;  // x dominates or is equal
       if (res == Rel::DOMINATES) {                                      // x is dominated
         --end;
-        std::swap(multi_filtration_[curr], multi_filtration_[end]);
+        swap(multi_filtration_[curr], multi_filtration_[end]);
       } else {  // no relation
         ++curr;
       }

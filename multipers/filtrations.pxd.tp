@@ -195,15 +195,14 @@ cdef extern from "gudhi/One_critical_filtration.h" namespace "Gudhi::multi_filtr
 
         bool is_finite() nogil
 
-{{for CTYPE, PYTYPE, SHORT in value_types}}
 {{for PVALUE, PSHORT in number_of_parameters}}
 {{if PVALUE != -1}}
 cdef extern from "gudhi/One_critical_filtration_with_n_parameters.h" namespace "Gudhi::multi_filtration":
-    cdef cppclass One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}} "Gudhi::multi_filtration::One_critical_filtration_with_n_parameters<{{CTYPE}}, {{PVALUE}}>":
+    cdef cppclass One_critical_filtration_with_{{PVALUE}}_parameters[T=*]:
         ## Copied from cython vector
         ctypedef size_t size_type
         ctypedef ptrdiff_t difference_type
-        ctypedef {{CTYPE}} value_type
+        ctypedef T value_type
 
         cppclass const_iterator
         cppclass iterator:
@@ -354,21 +353,20 @@ cdef extern from "gudhi/One_critical_filtration_with_n_parameters.h" namespace "
 
         ## end of copied from cython vector
 
-        One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}()  except + nogil
-        One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}(vector[value_type]&) except + nogil
-        One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}(One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}&) except + nogil
-
-        One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}(int) nogil
-        One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}& operator=(const One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}&) except +
+        One_critical_filtration_with_{{PVALUE}}_parameters()  except + nogil
+        One_critical_filtration_with_{{PVALUE}}_parameters(vector[value_type]&) except + nogil
+        One_critical_filtration_with_{{PVALUE}}_parameters(One_critical_filtration_with_{{PVALUE}}_parameters[T]&) except + nogil
+        One_critical_filtration_with_{{PVALUE}}_parameters(int) nogil
+        
+        One_critical_filtration_with_{{PVALUE}}_parameters[T]& operator=(const One_critical_filtration_with_{{PVALUE}}_parameters[T]&) except +
         @staticmethod
         vector[value_type]& vector[value_type]() nogil
         
-        void push_to_least_common_upper_bound(One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}&) nogil
-        void pull_to_greatest_common_lower_bound(One_critical_filtration_with_{{PVALUE}}_parameters_{{SHORT}}&) nogil
+        void push_to_least_common_upper_bound(One_critical_filtration_with_{{PVALUE}}_parameters[T]&) nogil
+        void pull_to_greatest_common_lower_bound(One_critical_filtration_with_{{PVALUE}}_parameters[T]&) nogil
 
         bool is_finite() nogil
 {{endif}}
-{{endfor}}
 {{endfor}}
         
 cdef extern from "gudhi/Multi_critical_filtration.h" namespace "Gudhi::multi_filtration":

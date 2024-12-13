@@ -413,7 +413,7 @@ cdef class {{D['PYTHON_TYPE']}}:
         return _vff21cview_{{D['SHORT_VALUE_TYPE']}}(self.truc.get_filtrations(), copy=True, duplicate=self.num_parameters)
         {{else}}
         {{if D['IS_FLAT']}}
-        return _vff21cview_{{D['PARAM_SHORT']}}_{{D['SHORT_VALUE_TYPE']}}_flat(self.truc.get_filtrations(), copy=True, duplicate=self.num_parameters)
+        return _vff21cview_{{D['PARAM_SHORT']}}_flat_{{D['SHORT_VALUE_TYPE']}}(self.truc.get_filtrations(), copy=True, duplicate=self.num_parameters)
         {{else}}
         return _vff21cview_{{D['PARAM_SHORT']}}_{{D['SHORT_VALUE_TYPE']}}(self.truc.get_filtrations(), copy=True, duplicate=self.num_parameters)
         {{endif}}

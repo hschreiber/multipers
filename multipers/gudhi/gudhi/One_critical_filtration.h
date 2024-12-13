@@ -127,17 +127,39 @@ class One_critical_filtration : public std::vector<T> {
    * @param it_begin Start of the range.
    * @param it_end End of the range.
    */
-  One_critical_filtration(typename std::vector<T>::iterator it_begin, typename std::vector<T>::iterator it_end)
+  template <class Iterator>
+  One_critical_filtration(Iterator it_begin, Iterator it_end)
       : Base(it_begin, it_end) {};
-  /**
-   * @brief Construct a vector from the range given by the begin and end const iterators.
-   *
-   * @param it_begin Start of the range.
-   * @param it_end End of the range.
-   */
-  One_critical_filtration(typename std::vector<T>::const_iterator it_begin,
-                          typename std::vector<T>::const_iterator it_end)
-      : Base(it_begin, it_end) {};
+
+  One_critical_filtration(const One_critical_filtration &v) : Base(static_cast<const Base &>(v)) {};
+
+  One_critical_filtration(One_critical_filtration &&v) : Base(static_cast<Base &&>(v)) {};
+
+  One_critical_filtration& operator=(const One_critical_filtration& other){
+    Base::operator=(static_cast<const Base &>(other));
+    return *this;
+  }
+
+  One_critical_filtration& operator=(One_critical_filtration&& other){
+    Base::operator=(static_cast<Base &&>(other));
+    return *this;
+  }
+
+  template <class GeneratorRange = std::initializer_list<T> >
+  One_critical_filtration& operator=(const GeneratorRange& other){
+    this->resize(other.size());
+    bool isInf = true, isMinusInf = true, isNaN = true;
+    auto it = other.begin();
+    for (unsigned int i = 0; i < other.size(); ++i){
+      (*this)[i] = *it;
+      if (*it != T_inf) isInf = false;
+      if (*it != -T_inf) isMinusInf = false;
+      if (!std::isnan(*it)) isNaN = false;
+      ++it;
+    }
+    if (isInf || isMinusInf || isNaN) this->resize(1);
+    return *this;
+  }
 
   // HERITAGE
 
@@ -960,14 +982,11 @@ class One_critical_filtration : public std::vector<T> {
    * @param x The target filtration value towards which to push.
    * @return True if and only if the value of this actually changed.
    */
-  bool push_to_least_common_upper_bound(const One_critical_filtration &x) {
-    if (this->is_plus_inf() || this->is_nan() || x.is_nan() || x.is_minus_inf()) return false;
+  bool push_to_least_common_upper_bound(const One_critical_filtration &x, bool exclude_infinite_values = false) {
+    if (this->is_plus_inf() || this->is_nan() || x.is_nan() || x.is_minus_inf() || (exclude_infinite_values && x.is_plus_inf())) return false;
     if (x.is_plus_inf() || this->is_minus_inf()) {
-      if (!x.is_minus_inf() && !this->is_plus_inf()) {
-        *this = x;
-        return true;
-      }
-      return false;
+      *this = x;
+      return true;
     }
 
     GUDHI_CHECK(this->num_parameters() == x.num_parameters(),
@@ -975,6 +994,27 @@ class One_critical_filtration : public std::vector<T> {
 
     bool modified = false;
     for (std::size_t i = 0; i < x.num_parameters(); i++) {
+      if (exclude_infinite_values && (x[i] == T_inf || x[i] == -T_inf)) continue;
+      modified |= Base::operator[](i) < x[i];
+      Base::operator[](i) = Base::operator[](i) > x[i] ? Base::operator[](i) : x[i];
+    }
+    return modified;
+  }
+  template <class GeneratorRange = std::initializer_list<T> >
+  bool push_to_least_common_upper_bound(const GeneratorRange &x, bool exclude_infinite_values = false) {
+    if (this->is_plus_inf() || this->is_nan()) return false;
+    if (this->is_minus_inf()) {
+      if (x.is_minus_inf()) return false;
+      *this = x;
+      return true;
+    }
+
+    GUDHI_CHECK(this->num_parameters() == x.num_parameters(),
+                "A filtration value cannot be pushed to another one with different numbers of parameters.");
+
+    bool modified = false;
+    for (std::size_t i = 0; i < x.num_parameters(); i++) {
+      if (exclude_infinite_values && (x[i] == T_inf || x[i] == -T_inf)) continue;
       modified |= Base::operator[](i) < x[i];
       Base::operator[](i) = Base::operator[](i) > x[i] ? Base::operator[](i) : x[i];
     }
@@ -991,14 +1031,11 @@ class One_critical_filtration : public std::vector<T> {
    * @param x The target filtration value towards which to pull.
    * @return True if and only if the value of this actually changed.
    */
-  bool pull_to_greatest_common_lower_bound(const One_critical_filtration &x) {
-    if (x.is_plus_inf() || this->is_nan() || x.is_nan() || this->is_minus_inf()) return false;
+  bool pull_to_greatest_common_lower_bound(const One_critical_filtration &x, bool exclude_infinite_values = false) {
+    if (x.is_plus_inf() || this->is_nan() || x.is_nan() || this->is_minus_inf() || (exclude_infinite_values && x.is_minus_inf())) return false;
     if (this->is_plus_inf() || x.is_minus_inf()) {
-      if (!x.is_plus_inf() && !this->is_minus_inf()) {
-        *this = x;
-        return true;
-      }
-      return false;
+      *this = x;
+      return true;
     }
 
     GUDHI_CHECK(this->num_parameters() == x.num_parameters(),
@@ -1006,6 +1043,27 @@ class One_critical_filtration : public std::vector<T> {
 
     bool modified = false;
     for (std::size_t i = 0; i < x.num_parameters(); i++) {
+      if (exclude_infinite_values && (x[i] == T_inf || x[i] == -T_inf)) continue;
+      modified |= Base::operator[](i) > x[i];
+      Base::operator[](i) = Base::operator[](i) > x[i] ? x[i] : Base::operator[](i);
+    }
+    return modified;
+  }
+  template <class GeneratorRange = std::initializer_list<T> >
+  bool pull_to_greatest_common_lower_bound(const GeneratorRange &x, bool exclude_infinite_values = false) {
+    if (this->is_nan() || this->is_minus_inf()) return false;
+    if (this->is_plus_inf()) {
+      if (x.is_plus_inf()) return false;
+      *this = x;
+      return true;
+    }
+
+    GUDHI_CHECK(this->num_parameters() == x.num_parameters(),
+                "A filtration value cannot be pulled to another one with different numbers of parameters.");
+
+    bool modified = false;
+    for (std::size_t i = 0; i < x.num_parameters(); i++) {
+      if (exclude_infinite_values && (x[i] == T_inf || x[i] == -T_inf)) continue;
       modified |= Base::operator[](i) > x[i];
       Base::operator[](i) = Base::operator[](i) > x[i] ? x[i] : Base::operator[](i);
     }

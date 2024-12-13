@@ -117,18 +117,20 @@ public:
   MultiDiagram(std::vector<MultiDiagram_point<filtration_type>> &m)
       : multiDiagram(m) {}
 
-  using python_bar =
-      std::pair<std::vector<typename filtration_type::value_type>,
-                std::vector<typename filtration_type::value_type>>; // This type is for python
+  using python_bar_point = std::vector<typename filtration_type::value_type>;
+  using python_bar = std::pair<python_bar_point, python_bar_point>; // This type is for python
   std::vector<python_bar> get_points(
       const dimension_type dimension = -1) const { // dump for python interface
     std::vector<python_bar> out;
     out.reserve(multiDiagram.size());
     for (const MultiDiagram_point<filtration_type> &pt : multiDiagram) {
       if (dimension == -1 || pt.get_dimension() == dimension) {
-        if (pt.get_birth().size() > 0 && pt.get_death().size() > 0 &&
-            !pt.get_birth().is_plus_inf() && !pt.get_death().is_minus_inf())
-          out.push_back({pt.get_birth(), pt.get_death()});
+        if (pt.get_birth().size() > 0 && pt.get_death().size() > 0 && !pt.get_birth().is_plus_inf() &&
+            !pt.get_death().is_minus_inf()) {
+          auto& b = pt.get_birth();
+          auto& d = pt.get_death();
+          out.push_back({python_bar_point(b.begin(), b.end()), python_bar_point(d.begin(), d.end())});
+        }
       }
     }
     /* out.shrink_to_fit(); */
@@ -266,9 +268,9 @@ public:
   } // cython bug : iterators like bc in bcs crash)
   iterator end() const { return this->multiDiagrams.end(); }
 
-using python_bar =
-    std::pair<std::vector<value_type>,
-              std::vector<value_type>>; // This type is for python
+  using python_bar_point = std::vector<value_type>;
+  using python_bar = std::pair<python_bar_point,
+                               python_bar_point>;  // This type is for python
   using barcodes = std::vector<std::vector<python_bar>>;
   barcodes get_points() {
     unsigned int nsummands = this->multiDiagrams.front().size();
@@ -280,7 +282,9 @@ using python_bar =
       for (unsigned int j = 0; j < nsummands; j++) {
         const MultiDiagram_point<filtration_type> &pt =
             this->multiDiagrams[i][j];
-        out[i][j] = {pt.get_birth(), pt.get_death()};
+        auto& b = pt.get_birth();
+        auto& d = pt.get_death();
+        out[i][j] = {python_bar_point(b.begin(), b.end()), python_bar_point(d.begin(), d.end())};
       }
     }
     return out;
