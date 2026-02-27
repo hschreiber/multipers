@@ -103,6 +103,8 @@ class Point
 
   operator std::vector<T>() const { return coordinates_; }
 
+  std::vector<T> &retrieve_underlying_container() { return coordinates_; }
+
   /**
    * @brief At operator.
    */

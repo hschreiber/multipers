@@ -22,6 +22,7 @@
 #include <ostream>    //std::ostream
 #include <stdexcept>  //std::invalid_argument, std::runtime_error
 #include <utility>
+#include <vector>
 
 #ifdef GUDHI_USE_TBB
 #include <oneapi/tbb/parallel_for.h>
@@ -83,6 +84,8 @@ class Summand {
   Dimension get_dimension() const { return dimension_; }
 
   void set_dimension(Dimension dimension) { dimension_ = dimension; }
+
+  [[nodiscard]] int get_number_of_parameters() const { return birthCorners_.num_parameters(); }
 
   template <class MultiFiltrationValue>
   bool contains(const MultiFiltrationValue &x) const {
@@ -196,82 +199,12 @@ class Summand {
   value_type get_interleaving() const { return interleaving_; }
 
   template <class RandomAccessValueRange>
-  value_type compute_distance_to(const RandomAccessValueRange &x, bool negative) const {
-    value_type lowerDist = std::get<0>(
-        _compute_distance_to_front(x, birthCorners_, negative, [](value_type cornerVal, value_type xVal) -> value_type {
-          return cornerVal - xVal;
-        }));
-    value_type upperDist = std::get<0>(
-        _compute_distance_to_front(x, deathCorners_, negative, [](value_type cornerVal, value_type xVal) -> value_type {
-          return xVal - cornerVal;
-        }));
-    return std::max(lowerDist, upperDist);
-  }
-
-  template <class RandomAccessValueRange>
-  std::vector<Index> compute_lower_and_upper_generator_of(const RandomAccessValueRange &x, bool full) const {
-    [[maybe_unused]] auto [lowerDist, lowerGen, lowerParam] = _compute_distance_to_front(
-        x, birthCorners_, true, [](value_type cornerVal, value_type xVal) -> value_type { return cornerVal - xVal; });
-    [[maybe_unused]] auto [upperDist, upperGen, upperParam] = _compute_distance_to_front(
-        x, deathCorners_, true, [](value_type cornerVal, value_type xVal) -> value_type { return xVal - cornerVal; });
-
-    if (full) return {lowerGen, lowerParam, upperGen, upperParam};
-    return {lowerGen, upperGen};
-  }
-
-  template <class RandomAccessValueRange>
-  value_type get_local_weight(const RandomAccessValueRange &x, value_type delta) const {
-    using P = Box<value_type>::Point_t;
-
-    GUDHI_CHECK(x.size() == birthCorners_.num_parameters(),
-                std::invalid_argument("Input range does not have the right size."));
-
-    bool rectangle = delta <= 0;
-
-    // box on which to compute the local weight
-    P mini(x.size());
-    P maxi(x.size());
-    for (Index i = 0; i < x.size(); i++) {
-      mini[i] = rectangle ? x[i] + delta : x[i] - delta;
-      maxi[i] = rectangle ? x[i] - delta : x[i] + delta;
-    }
-    Box<value_type> threshold(rectangle ? maxi : mini, rectangle ? mini : maxi);
-
-    value_type localWeight = 0;
-
-    if (rectangle) {
-      // local weight is the volume of the largest rectangle in the restricted
-      for (const auto &birth : birthCorners_) {
-        for (const auto &death : deathCorners_) {
-          localWeight = std::max(localWeight, _rectangle_volume(birth, death, threshold));
-        }
-      }
-      return localWeight / std::pow(2 * std::abs(delta), x.size());
-    }
-
-    // local weight is interleaving to 0 of module restricted to the square
-    localWeight = _compute_interleaving(threshold);
-    return localWeight / (2 * std::abs(delta));
-  }
-
-  template <class RandomAccessValueRange>
-  value_type get_landscape_value(const RandomAccessValueRange &x) const {
-    value_type landscapeValue = 0;
-    Box<value_type> trivialBox;
-    for (const auto &birth : birthCorners_) {
-      for (const auto &death : deathCorners_) {
-        value_type value = std::min(_get_max_diagonal(birth, x, trivialBox), _get_max_diagonal(x, death, trivialBox));
-        landscapeValue = std::max(landscapeValue, value);
-      }
-    }
-    return landscapeValue;
-  }
-
-  void rescale(const std::vector<value_type> &rescaleFactors) {
+  void rescale(const RandomAccessValueRange &rescaleFactors) {
     _transform(rescaleFactors, [](value_type &cornerVal, value_type fact) -> value_type { return cornerVal *= fact; });
   }
 
-  void translate(const std::vector<value_type> &translation) {
+  template <class RandomAccessValueRange>
+  void translate(const RandomAccessValueRange &translation) {
     _transform(translation, [](value_type &cornerVal, value_type fact) -> value_type { return cornerVal += fact; });
   }
 
@@ -315,13 +248,14 @@ class Summand {
     return -1;
   }
 
-  friend bool operator==(const Summand &a, const Summand &b);
+  friend bool operator==(const Summand &a, const Summand &b) {
+    return a.dimension_ == b.dimension_ && a.birthCorners_ == b.birthCorners_ && a.deathCorners_ == b.deathCorners_;
+  }
 
   /**
    * @brief Outstream operator.
    */
-  friend std::ostream &operator<<(std::ostream &stream, const Summand &s)
-  {
+  friend std::ostream &operator<<(std::ostream &stream, const Summand &s) {
     stream << "Summand:\n";
     stream << "Dimension: " << s.dimension_ << "\n";
     stream << "Birth corners:\n";
@@ -355,8 +289,8 @@ class Summand {
     return interleaving;
   }
 
-  template <class F>
-  void _transform(const std::vector<value_type> &factors, F &&operate) {
+  template <class RandomAccessValueRange, class F>
+  void _transform(const RandomAccessValueRange &factors, F &&operate) {
     if (birthCorners_.num_generators() == 0) return;
 
     auto dimension = birthCorners_.num_parameters();
@@ -411,7 +345,6 @@ class Summand {
     for (Index i = 0; i < std::min(b.size(), a.size()); i++) a[i] = std::max(a[i], b[i]);
   }
 
-  // TODO: moving into Box class? But then, all the Generator management (get_val) will feel very artificial...
   template <class RandomAccessValueRange>
   static value_type _get_max_diagonal(const RandomAccessValueRange &birth,
                                       const RandomAccessValueRange &death,
@@ -448,55 +381,6 @@ class Summand {
     }
 
     return diag;
-  }
-
-  template <class RandomAccessValueRange, class Corners, typename F>
-  static std::tuple<value_type, Index, Index> _compute_distance_to_front(const RandomAccessValueRange &x,
-                                                                         const Corners &corners,
-                                                                         bool negative,
-                                                                         F &&diff) {
-    value_type distance = T_inf;
-    Index gen, param;
-
-    for (Index g = 0; g < corners.num_generators(); ++g) {
-      value_type tempDist = negative ? T_m_inf : 0;
-      Index tempParam = 0;
-      for (Index p = 0; p < corners.num_parameters(); ++p) {
-        value_type d = std::forward<F>(diff)(corners(g, p), x[p]);
-        if (tempDist < d) {
-          tempDist = d;
-          tempParam = p;
-        }
-      }
-      if (distance > tempDist) {
-        distance = tempDist;
-        gen = g;
-        param = tempParam;
-      }
-    }
-
-    return {distance, gen, param};
-  }
-
-  static value_type _rectangle_volume(const Births::Generator &birth,
-                                      const Deaths::Generator &death,
-                                      const Box<value_type> &box) {
-    // NaN?
-    if (birth.size() == 0 || death.size() == 0) return 0;
-
-    auto get_val = [](const auto &r, Index i) -> value_type {
-      if (i < r.size()) return r[i];
-      // never used if r.size() == 0
-      return r[0];
-    };
-
-    value_type volume = std::min(death[0], box.get_upper_corner()[0]) - std::max(birth[0], box.get_lower_corner()[0]);
-    for (Index i = 1; i < birth.size(); i++) {
-      value_type t_death = std::min(get_val(death, i), box.get_upper_corner()[i]);
-      value_type t_birth = std::max(get_val(birth, i), box.get_lower_corner()[i]);
-      volume = volume * (t_death - t_birth);
-    }
-    return volume;
   }
 };
 
