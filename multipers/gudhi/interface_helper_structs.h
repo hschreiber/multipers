@@ -34,7 +34,7 @@
 #include <python_interfaces/construction_utils.h>
 
 #include "ext_interface/nanobind_wrapper_types.hpp"
-#include "slicer_interface_helpers.h"
+#include "interface_helpers.h"
 
 namespace Gudhi {
 namespace multi_persistence {
