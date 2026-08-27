@@ -2,6 +2,7 @@
 
 #include <oneapi/tbb/enumerable_thread_specific.h>
 #include <oneapi/tbb/parallel_for.h>
+#include <oneapi/tbb/parallel_sort.h>
 #include <cstddef>
 #include <limits>
 #include <stdexcept>
@@ -261,13 +262,13 @@ inline void get_degree_rips_st_python(const char *buffer_start,
   st_multi_python_container = std::move(st_multi);
 }
 
-inline void get_degree_rips_st_python(const char *buffer_start,
-                                      const std::size_t buffer_size,
-                                      const intptr_t st_multi_ptr,
-                                      const std::vector<int> &degrees) {
-  auto &st_multi_python_container = python_interface::get_simplextree_from_pointer<flat_multi_st>(st_multi_ptr);
-  get_degree_rips_st_python(buffer_start, buffer_size, st_multi_python_container, degrees);
-}
+// inline void get_degree_rips_st_python(const char *buffer_start,
+//                                       const std::size_t buffer_size,
+//                                       const intptr_t st_multi_ptr,
+//                                       const std::vector<int> &degrees) {
+//   auto &st_multi_python_container = python_interface::get_simplextree_from_pointer<flat_multi_st>(st_multi_ptr);
+//   get_degree_rips_st_python(buffer_start, buffer_size, st_multi_python_container, degrees);
+// }
 
 template <typename dtype, typename indices_type>
 void compute_function_rips_surface_python(interface_multi &st_multi,
@@ -291,18 +292,18 @@ void compute_function_rips_surface_python(interface_multi &st_multi,
   if (mobius_inversion) container.differentiate(2);  // degree,x axis (already inversed), y axis
 }
 
-template <typename dtype, typename indices_type>
-void compute_function_rips_surface_python(const intptr_t st_multi_ptr,
-                                          dtype *data_ptr,
-                                          const std::vector<indices_type> degrees,
-                                          indices_type I,
-                                          indices_type J,
-                                          const bool mobius_inversion = false,
-                                          const bool zero_pad = false,
-                                          indices_type n_jobs = 0) {
-  auto &st_multi = python_interface::get_simplextree_from_pointer<flat_multi_st>(st_multi_ptr);
-  compute_function_rips_surface_python(st_multi, data_ptr, degrees, I, J, mobius_inversion, zero_pad, n_jobs);
-}
+// template <typename dtype, typename indices_type>
+// void compute_function_rips_surface_python(const intptr_t st_multi_ptr,
+//                                           dtype *data_ptr,
+//                                           const std::vector<indices_type> degrees,
+//                                           indices_type I,
+//                                           indices_type J,
+//                                           const bool mobius_inversion = false,
+//                                           const bool zero_pad = false,
+//                                           indices_type n_jobs = 0) {
+//   auto &st_multi = python_interface::get_simplextree_from_pointer<flat_multi_st>(st_multi_ptr);
+//   compute_function_rips_surface_python(st_multi, data_ptr, degrees, I, J, mobius_inversion, zero_pad, n_jobs);
+// }
 
 template <typename dtype, typename indices_type>
 std::pair<std::vector<std::vector<indices_type>>, std::vector<dtype>> compute_function_rips_signed_measure_python(
@@ -328,20 +329,20 @@ std::pair<std::vector<std::vector<indices_type>>, std::vector<dtype>> compute_fu
   return container.sparsify();
 }
 
-template <typename dtype, typename indices_type>
-std::pair<std::vector<std::vector<indices_type>>, std::vector<dtype>> compute_function_rips_signed_measure_python(
-    const intptr_t st_multi_ptr,
-    dtype *data_ptr,
-    const std::vector<indices_type> degrees,
-    indices_type I,
-    indices_type J,
-    const bool mobius_inversion = false,
-    const bool zero_pad = false,
-    indices_type n_jobs = 0) {
-  auto &st_multi = python_interface::get_simplextree_from_pointer<interface_multi>(st_multi_ptr);
-  return compute_function_rips_signed_measure_python(
-      st_multi, data_ptr, degrees, I, J, mobius_inversion, zero_pad, n_jobs);
-}
+// template <typename dtype, typename indices_type>
+// std::pair<std::vector<std::vector<indices_type>>, std::vector<dtype>> compute_function_rips_signed_measure_python(
+//     const intptr_t st_multi_ptr,
+//     dtype *data_ptr,
+//     const std::vector<indices_type> degrees,
+//     indices_type I,
+//     indices_type J,
+//     const bool mobius_inversion = false,
+//     const bool zero_pad = false,
+//     indices_type n_jobs = 0) {
+//   auto &st_multi = python_interface::get_simplextree_from_pointer<interface_multi>(st_multi_ptr);
+//   return compute_function_rips_signed_measure_python(
+//       st_multi, data_ptr, degrees, I, J, mobius_inversion, zero_pad, n_jobs);
+// }
 
 }  // namespace function_rips
 }  // namespace multiparameter

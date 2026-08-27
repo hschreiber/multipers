@@ -65,11 +65,11 @@ using interface_std = Simplex_tree<Simplex_tree_options_for_python>;  // Interfa
                                                                       // (smaller so should do less
                                                                       // segfaults)
 
-template <class Simplextree_interface>
-Simplextree_interface &get_simplextree_from_pointer(const uintptr_t splxptr) {  // DANGER
-  Simplextree_interface &st = *(Simplextree_interface *)(splxptr);
-  return st;
-}
+// template <class Simplextree_interface>
+// Simplextree_interface &get_simplextree_from_pointer(const uintptr_t splxptr) {  // DANGER
+//   Simplextree_interface &st = *(Simplextree_interface *)(splxptr);
+//   return st;
+// }
 
 template <typename Filtration,
           typename value_type = typename Filtration::value_type/* ,
@@ -127,6 +127,7 @@ class Simplex_tree_multi_interface
     return *this;
   }
 
+  // makes the method public
   template <typename OtherSimplexTreeOptions, typename F>
   void copy_from(const Simplex_tree<OtherSimplexTreeOptions> &complex_source, F &&translate_filtration_value) {
     Base::copy_from(complex_source, std::forward<F>(translate_filtration_value));
@@ -134,11 +135,11 @@ class Simplex_tree_multi_interface
 
   bool find_simplex(const Simplex &simplex) { return (Base::find(simplex) != Base::null_simplex()); }
 
-  int simplex_dimension(const Simplex &simplex) {
-    auto sh = Base_tree::find(simplex);
-    if (sh == Base_tree::null_simplex()) return -1;
-    return Base_tree::dimension(sh);
-  }
+  // int simplex_dimension(const Simplex &simplex) {
+  //   auto sh = Base_tree::find(simplex);
+  //   if (sh == Base_tree::null_simplex()) return -1;
+  //   return Base_tree::dimension(sh);
+  // }
 
   void assign_simplex_filtration(const Simplex &simplex, const Filtration_value &filtration) {
     Base::assign_filtration(Base::find(simplex), filtration);
@@ -159,12 +160,12 @@ class Simplex_tree_multi_interface
     return (result.second);
   }
 
-  // Do not interface this function, only used in alpha complex interface for
-  // complex creation
-  bool insert_simplex(const Simplex &simplex, const Filtration_value &filtration) {
-    Insertion_result result = Base_tree::insert_simplex(simplex, filtration);
-    return (result.second);
-  }
+  // // Do not interface this function, only used in alpha complex interface for
+  // // complex creation
+  // bool insert_simplex(const Simplex &simplex, const Filtration_value &filtration) {
+  //   Insertion_result result = Base_tree::insert_simplex(simplex, filtration);
+  //   return (result.second);
+  // }
 
   // bool insert_simplex(const Simplex &simplex, const Python_filtration_type &filtration) {
   //   Filtration_value &filtration_ = *(Filtration_value *)(&filtration);  // Jardinage for no copy.
@@ -172,12 +173,12 @@ class Simplex_tree_multi_interface
   //   return (result.second);
   // }
 
-  // Do not interface this function, only used in interface for complex creation
-  bool insert_simplex_and_subfaces(const Simplex &simplex, const Filtration_value &filtration) {
-    Insertion_result result =
-        Base_tree::insert_simplex_and_subfaces(Base::Filtration_maintenance::INCREASE_NEW, simplex, filtration);
-    return (result.second);
-  }
+  // // Do not interface this function, only used in interface for complex creation
+  // bool insert_simplex_and_subfaces(const Simplex &simplex, const Filtration_value &filtration) {
+  //   Insertion_result result =
+  //       Base_tree::insert_simplex_and_subfaces(Base::Filtration_maintenance::INCREASE_NEW, simplex, filtration);
+  //   return (result.second);
+  // }
 
   // bool insert_simplex_and_subfaces(const Simplex &simplex, const Python_filtration_type &filtration) {
   //   Filtration_value &filtration_ = *(Filtration_value *)(&filtration);  // Jardinage for no copy.
@@ -185,20 +186,20 @@ class Simplex_tree_multi_interface
   //   filtration); return (result.second);
   // }
 
-  // Do not interface this function, only used in strong witness interface for
-  // complex creation
-  bool insert_simplex(const std::vector<std::size_t> &simplex, const Filtration_value &filtration) {
-    Insertion_result result = Base_tree::insert_simplex(simplex, filtration);
-    return (result.second);
-  }
+  // // Do not interface this function, only used in strong witness interface for
+  // // complex creation
+  // bool insert_simplex(const std::vector<std::size_t> &simplex, const Filtration_value &filtration) {
+  //   Insertion_result result = Base_tree::insert_simplex(simplex, filtration);
+  //   return (result.second);
+  // }
 
-  // Do not interface this function, only used in strong witness interface for
-  // complex creation
-  bool insert_simplex_and_subfaces(const std::vector<std::size_t> &simplex, const Filtration_value &filtration) {
-    Insertion_result result =
-        Base_tree::insert_simplex_and_subfaces(Base::Filtration_maintenance::INCREASE_NEW, simplex, filtration);
-    return (result.second);
-  }
+  // // Do not interface this function, only used in strong witness interface for
+  // // complex creation
+  // bool insert_simplex_and_subfaces(const std::vector<std::size_t> &simplex, const Filtration_value &filtration) {
+  //   Insertion_result result =
+  //       Base_tree::insert_simplex_and_subfaces(Base::Filtration_maintenance::INCREASE_NEW, simplex, filtration);
+  //   return (result.second);
+  // }
 
   typename SimplexTreeOptions::Filtration_value *simplex_filtration(const Simplex &simplex) {
     auto &filtration = Base::get_filtration_value(Base::find(simplex));
@@ -216,45 +217,45 @@ class Simplex_tree_multi_interface
     return std::make_pair(std::move(simplex), &Base::get_filtration_value(f_simplex));
   }
 
-  Filtered_simplices get_star(const Simplex &simplex) {
-    Filtered_simplices star;
-    for (auto f_simplex : Base::star_simplex_range(Base::find(simplex))) {
-      Simplex simplex_star;
-      for (auto vertex : Base::simplex_vertex_range(f_simplex)) {
-        simplex_star.insert(simplex_star.begin(), vertex);
-      }
-      star.push_back(std::make_pair(simplex_star, &Base::get_filtration_value(f_simplex)));
-    }
-    return star;
-  }
+  // Filtered_simplices get_star(const Simplex &simplex) {
+  //   Filtered_simplices star;
+  //   for (auto f_simplex : Base::star_simplex_range(Base::find(simplex))) {
+  //     Simplex simplex_star;
+  //     for (auto vertex : Base::simplex_vertex_range(f_simplex)) {
+  //       simplex_star.insert(simplex_star.begin(), vertex);
+  //     }
+  //     star.push_back(std::make_pair(simplex_star, &Base::get_filtration_value(f_simplex)));
+  //   }
+  //   return star;
+  // }
 
-  Filtered_simplices get_cofaces(const Simplex &simplex, int dimension) {
-    Filtered_simplices cofaces;
-    for (auto f_simplex : Base::cofaces_simplex_range(Base::find(simplex), dimension)) {
-      Simplex simplex_coface;
-      for (auto vertex : Base::simplex_vertex_range(f_simplex)) {
-        simplex_coface.insert(simplex_coface.begin(), vertex);
-      }
-      cofaces.push_back(std::make_pair(simplex_coface, &Base::get_filtration_value(f_simplex)));
-    }
-    return cofaces;
-  }
+  // Filtered_simplices get_cofaces(const Simplex &simplex, int dimension) {
+  //   Filtered_simplices cofaces;
+  //   for (auto f_simplex : Base::cofaces_simplex_range(Base::find(simplex), dimension)) {
+  //     Simplex simplex_coface;
+  //     for (auto vertex : Base::simplex_vertex_range(f_simplex)) {
+  //       simplex_coface.insert(simplex_coface.begin(), vertex);
+  //     }
+  //     cofaces.push_back(std::make_pair(simplex_coface, &Base::get_filtration_value(f_simplex)));
+  //   }
+  //   return cofaces;
+  // }
 
-  void compute_extended_filtration() { throw std::logic_error("Incompatible with multipers"); }
+  // void compute_extended_filtration() { throw std::logic_error("Incompatible with multipers"); }
 
-  Simplex_tree_multi_interface *collapse_edges([[maybe_unused]] int nb_collapse_iteration) {
-    throw std::logic_error("Incompatible with multipers");
-  }
+  // Simplex_tree_multi_interface *collapse_edges([[maybe_unused]] int nb_collapse_iteration) {
+  //   throw std::logic_error("Incompatible with multipers");
+  // }
 
   // ######################## MULTIPERS STUFF
-  void set_keys_to_enumerate() {
-    int count = 0;
-    for (auto sh : Base::filtration_simplex_range()) Base::assign_key(sh, count++);
-  }
+  // void set_keys_to_enumerate() {
+  //   int count = 0;
+  //   for (auto sh : Base::filtration_simplex_range()) Base::assign_key(sh, count++);
+  // }
 
-  int get_key(const Simplex &simplex) { return Base::key(Base::find(simplex)); }
+  // int get_key(const Simplex &simplex) { return Base::key(Base::find(simplex)); }
 
-  void set_key(const Simplex &simplex, int key) { Base::assign_key(Base::find(simplex), key); }
+  // void set_key(const Simplex &simplex, int key) { Base::assign_key(Base::find(simplex), key); }
 
   // Fills a parameter with a lower-star filtration
   void fill_lowerstar(const std::vector<typename Filtration_value::value_type> &filtration, int axis) {
@@ -382,11 +383,11 @@ class Simplex_tree_multi_interface
     }
   }
 
-  template <typename Line_like>
-  void to_std(intptr_t ptr, const Line_like &line, int dimension) {
-    auto &st = get_simplextree_from_pointer<interface_std>(ptr);
-    to_std_object(st, line, dimension);
-  }
+  // template <typename Line_like>
+  // void to_std(intptr_t ptr, const Line_like &line, int dimension) {
+  //   auto &st = get_simplextree_from_pointer<interface_std>(ptr);
+  //   to_std_object(st, line, dimension);
+  // }
 
   template <typename Line_like>
   std::vector<char> get_to_std_state(const Line_like &line, int dimension) {
@@ -397,14 +398,14 @@ class Simplex_tree_multi_interface
     return buffer;
   }
 
-  void to_std_linear_projection_object(interface_std &st, std::vector<double> linear_form) {
-    linear_projection(st, *this, linear_form);
-  }
+  // void to_std_linear_projection_object(interface_std &st, std::vector<double> linear_form) {
+  //   linear_projection(st, *this, linear_form);
+  // }
 
-  void to_std_linear_projection(intptr_t ptr, std::vector<double> linear_form) {
-    auto &st = get_simplextree_from_pointer<interface_std>(ptr);
-    to_std_linear_projection_object(st, linear_form);
-  }
+  // void to_std_linear_projection(intptr_t ptr, std::vector<double> linear_form) {
+  //   auto &st = get_simplextree_from_pointer<interface_std>(ptr);
+  //   to_std_linear_projection_object(st, linear_form);
+  // }
 
   std::vector<char> get_to_std_linear_projection_state(const std::vector<double> &linear_form) {
     interface_std st;
@@ -445,12 +446,12 @@ class Simplex_tree_multi_interface
                     [](const auto &fil) { return as_type<Filtration_value>(fil); });
   }
 
-  template <typename OtherFiltrationValue>
-  void copy_from_interface(intptr_t other_ptr) {
-    Simplex_tree_multi_interface<OtherFiltrationValue> &other =
-        *(Simplex_tree_multi_interface<OtherFiltrationValue> *)(other_ptr);
-    copy_from_interface_object(other);
-  }
+  // template <typename OtherFiltrationValue>
+  // void copy_from_interface(intptr_t other_ptr) {
+  //   Simplex_tree_multi_interface<OtherFiltrationValue> &other =
+  //       *(Simplex_tree_multi_interface<OtherFiltrationValue> *)(other_ptr);
+  //   copy_from_interface_object(other);
+  // }
 
   void unsqueeze_filtration_from(const Simplex_tree_multi_interface &grid_st, const std::vector<std::vector<double>> &grid) {
     Base::clear();
@@ -484,10 +485,10 @@ class Simplex_tree_multi_interface
     });
   }
 
-  void unsqueeze_filtration(const intptr_t grid_st_ptr, const std::vector<std::vector<double>> &grid) {
-    Simplex_tree_multi_interface &grid_st = *(Simplex_tree_multi_interface *)grid_st_ptr;
-    unsqueeze_filtration_from(grid_st, grid);
-  }
+  // void unsqueeze_filtration(const intptr_t grid_st_ptr, const std::vector<std::vector<double>> &grid) {
+  //   Simplex_tree_multi_interface &grid_st = *(Simplex_tree_multi_interface *)grid_st_ptr;
+  //   unsqueeze_filtration_from(grid_st, grid);
+  // }
 
   template <typename OutSimplexTree>
   void squeeze_filtration_to(OutSimplexTree &out, const std::vector<std::vector<double>> &grid) {
@@ -497,12 +498,12 @@ class Simplex_tree_multi_interface
         *this, [&](const auto &simplex_filtration) { return compute_coordinates_in_grid(simplex_filtration, grid); });
   }
 
-  void squeeze_filtration(const intptr_t outptr, const std::vector<std::vector<double>> &grid) {
-    using int_fil_type = decltype(std::declval<Filtration_value>().template as_type<std::int32_t>());
-    using st_coord_type = Simplex_tree_multi_interface<int_fil_type, int32_t>;
-    st_coord_type &out = *(st_coord_type *)outptr;
-    squeeze_filtration_to(out, grid);
-  }
+  // void squeeze_filtration(const intptr_t outptr, const std::vector<std::vector<double>> &grid) {
+  //   using int_fil_type = decltype(std::declval<Filtration_value>().template as_type<std::int32_t>());
+  //   using st_coord_type = Simplex_tree_multi_interface<int_fil_type, int32_t>;
+  //   st_coord_type &out = *(st_coord_type *)outptr;
+  //   squeeze_filtration_to(out, grid);
+  // }
 
   std::vector<std::vector<std::vector<value_type>>>  // dim, pts, param
   get_filtration_values(const std::vector<int> &degrees) {
@@ -618,75 +619,75 @@ using interface_multi = Simplex_tree_multi_interface<
 
 // Wrappers of the functions in Simplex_tree_multi.h, to deal with the "pointer
 // only" python interface
-template <typename Filtration>
-void inline flatten_diag_from_ptr(const uintptr_t splxptr,
-                                  const uintptr_t new_splxptr,
-                                  const std::vector<typename Filtration::value_type> basepoint,
-                                  int dimension) {  // for python
-  auto &st = get_simplextree_from_pointer<interface_std>(new_splxptr);
-  auto &st_multi = get_simplextree_from_pointer<interface_multi<Filtration>>(splxptr);
-  flatten_diag(st, st_multi, basepoint, dimension);
-}
+// template <typename Filtration>
+// void inline flatten_diag_from_ptr(const uintptr_t splxptr,
+//                                   const uintptr_t new_splxptr,
+//                                   const std::vector<typename Filtration::value_type> basepoint,
+//                                   int dimension) {  // for python
+//   auto &st = get_simplextree_from_pointer<interface_std>(new_splxptr);
+//   auto &st_multi = get_simplextree_from_pointer<interface_multi<Filtration>>(splxptr);
+//   flatten_diag(st, st_multi, basepoint, dimension);
+// }
 
-template <typename Filtration>
-void inline multify_from_ptr(uintptr_t splxptr,
-                             uintptr_t new_splxptr,
-                             const int dimension,
-                             const Filtration &default_values) {  // for python
-  auto &st = get_simplextree_from_pointer<interface_std>(splxptr);
-  auto &st_multi = get_simplextree_from_pointer<interface_multi<Filtration>>(new_splxptr);
-  st_multi = Gudhi::multi_persistence::make_multi_dimensional<typename interface_multi<Filtration>::SimplexTreeOptions>(
-      st, default_values, dimension);
-}
+// template <typename Filtration>
+// void inline multify_from_ptr(uintptr_t splxptr,
+//                              uintptr_t new_splxptr,
+//                              const int dimension,
+//                              const Filtration &default_values) {  // for python
+//   auto &st = get_simplextree_from_pointer<interface_std>(splxptr);
+//   auto &st_multi = get_simplextree_from_pointer<interface_multi<Filtration>>(new_splxptr);
+//   st_multi = Gudhi::multi_persistence::make_multi_dimensional<typename interface_multi<Filtration>::SimplexTreeOptions>(
+//       st, default_values, dimension);
+// }
 
-template <typename Filtration>
-void inline flatten_from_ptr(uintptr_t splxptr,
-                             uintptr_t new_splxptr,
-                             const int dimension = 0) {  // for python
-  auto &st = get_simplextree_from_pointer<interface_std>(new_splxptr);
-  auto &st_multi = get_simplextree_from_pointer<interface_multi<Filtration>>(splxptr);
-  st = Gudhi::multi_persistence::make_one_dimensional<Simplex_tree_options_for_python>(st_multi, dimension);
-}
+// template <typename Filtration>
+// void inline flatten_from_ptr(uintptr_t splxptr,
+//                              uintptr_t new_splxptr,
+//                              const int dimension = 0) {  // for python
+//   auto &st = get_simplextree_from_pointer<interface_std>(new_splxptr);
+//   auto &st_multi = get_simplextree_from_pointer<interface_multi<Filtration>>(splxptr);
+//   st = Gudhi::multi_persistence::make_one_dimensional<Simplex_tree_options_for_python>(st_multi, dimension);
+// }
 
-template <typename Filtration, typename... Args>
-void inline linear_projection_from_ptr(const uintptr_t ptr, const uintptr_t ptr_multi, Args... args) {
-  auto &st = get_simplextree_from_pointer<interface_std>(ptr);
-  auto &st_multi = get_simplextree_from_pointer<interface_multi<Filtration>>(ptr_multi);
-  linear_projection(st, st_multi, args...);
-}
+// template <typename Filtration, typename... Args>
+// void inline linear_projection_from_ptr(const uintptr_t ptr, const uintptr_t ptr_multi, Args... args) {
+//   auto &st = get_simplextree_from_pointer<interface_std>(ptr);
+//   auto &st_multi = get_simplextree_from_pointer<interface_multi<Filtration>>(ptr_multi);
+//   linear_projection(st, st_multi, args...);
+// }
 
-template <typename Filtration = multipers::tmp_interface::Filtration_value<float>>
-using options_multi = Gudhi::multi_persistence::Simplex_tree_options_multidimensional_filtration<Filtration>;
+// template <typename Filtration = multipers::tmp_interface::Filtration_value<float>>
+// using options_multi = Gudhi::multi_persistence::Simplex_tree_options_multidimensional_filtration<Filtration>;
 
-template <typename Filtration, typename... Args>
-void inline squeeze_filtration_from_ptr(uintptr_t splxptr, Args... args) {
-  Simplex_tree<options_multi<Filtration>> &st_multi = *(Gudhi::Simplex_tree<options_multi<Filtration>> *)(splxptr);
-  squeeze_filtration(st_multi, args...);
-}
+// template <typename Filtration, typename... Args>
+// void inline squeeze_filtration_from_ptr(uintptr_t splxptr, Args... args) {
+//   Simplex_tree<options_multi<Filtration>> &st_multi = *(Gudhi::Simplex_tree<options_multi<Filtration>> *)(splxptr);
+//   squeeze_filtration(st_multi, args...);
+// }
 
-template <typename Filtration, typename... Args>
-inline std::vector<std::vector<std::vector<Filtration>>> get_filtration_values_from_ptr(uintptr_t splxptr,
-                                                                                        Args... args) {
-  Simplex_tree<options_multi<Filtration>> &st_multi = *(Gudhi::Simplex_tree<options_multi<Filtration>> *)(splxptr);
-  return get_filtration_values(st_multi, args...);
-}
+// template <typename Filtration, typename... Args>
+// inline std::vector<std::vector<std::vector<Filtration>>> get_filtration_values_from_ptr(uintptr_t splxptr,
+//                                                                                         Args... args) {
+//   Simplex_tree<options_multi<Filtration>> &st_multi = *(Gudhi::Simplex_tree<options_multi<Filtration>> *)(splxptr);
+//   return get_filtration_values(st_multi, args...);
+// }
 
 // Final types
 //
 //
 
-template <typename Filtration>
-using Simplex_tree_multi_simplex_handle = typename Simplex_tree_multi_interface<Filtration>::Simplex_handle;
+// template <typename Filtration>
+// using Simplex_tree_multi_simplex_handle = typename Simplex_tree_multi_interface<Filtration>::Simplex_handle;
 
-template <typename Filtration>
-using Simplex_tree_multi_simplices_iterator =
-    typename Simplex_tree_multi_interface<Filtration>::Complex_simplex_iterator;
-template <typename Filtration>
-using Simplex_tree_multi_skeleton_iterator =
-    typename Simplex_tree_multi_interface<Filtration>::Skeleton_simplex_iterator;
-template <typename Filtration>
-using Simplex_tree_multi_boundary_iterator =
-    typename Simplex_tree_multi_interface<Filtration>::Boundary_simplex_iterator;
+// template <typename Filtration>
+// using Simplex_tree_multi_simplices_iterator =
+//     typename Simplex_tree_multi_interface<Filtration>::Complex_simplex_iterator;
+// template <typename Filtration>
+// using Simplex_tree_multi_skeleton_iterator =
+//     typename Simplex_tree_multi_interface<Filtration>::Skeleton_simplex_iterator;
+// template <typename Filtration>
+// using Simplex_tree_multi_boundary_iterator =
+//     typename Simplex_tree_multi_interface<Filtration>::Boundary_simplex_iterator;
 }  // namespace python_interface
 }  // namespace multiparameter
 }  // namespace Gudhi

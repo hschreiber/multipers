@@ -327,8 +327,8 @@ def _upper_bound_dimension(self):
     return _upper_bound_dimension_raw[type(self)](self)
 
 
-def _simplex_dimension(self, simplex):
-    return _simplex_dimension_raw[type(self)](self, np.asarray(simplex, dtype=np.int32))
+# def _simplex_dimension(self, simplex):
+#     return _simplex_dimension_raw[type(self)](self, np.asarray(simplex, dtype=np.int32))
 
 
 def _contains(self, simplex):
@@ -371,18 +371,18 @@ def _get_simplices_of_dimension(self, dim):
     return _get_simplices_of_dimension_raw[type(self)](self, dim)
 
 
-def _key(self, simplex):
-    return _get_key_raw[type(self)](self, np.asarray(simplex, dtype=np.int32))
+# def _key(self, simplex):
+#     return _get_key_raw[type(self)](self, np.asarray(simplex, dtype=np.int32))
 
 
-def _set_keys_to_enumerate(self):
-    _set_keys_to_enumerate_raw[type(self)](self)
-    return None
+# def _set_keys_to_enumerate(self):
+#     _set_keys_to_enumerate_raw[type(self)](self)
+#     return None
 
 
-def _set_key(self, simplex, key):
-    _set_key_raw[type(self)](self, np.asarray(simplex, dtype=np.int32), key)
-    return None
+# def _set_key(self, simplex, key):
+#     _set_key_raw[type(self)](self, np.asarray(simplex, dtype=np.int32), key)
+#     return None
 
 
 def _to_scc_file(
@@ -726,7 +726,7 @@ _num_vertices_raw = {}
 _num_simplices_raw = {}
 _dimension_raw = {}
 _upper_bound_dimension_raw = {}
-_simplex_dimension_raw = {}
+# _simplex_dimension_raw = {}
 _find_simplex_raw = {}
 _remove_maximal_simplex_raw = {}
 _prune_above_dimension_raw = {}
@@ -734,9 +734,9 @@ _expansion_raw = {}
 _make_filtration_non_decreasing_raw = {}
 _reset_filtration_raw = {}
 _get_simplices_of_dimension_raw = {}
-_get_key_raw = {}
-_set_key_raw = {}
-_set_keys_to_enumerate_raw = {}
+# _get_key_raw = {}
+# _set_key_raw = {}
+# _set_keys_to_enumerate_raw = {}
 _get_filtration_values_raw = {}
 _squeeze_inplace_raw = {}
 _squeeze_to_raw = {}
@@ -756,7 +756,7 @@ def _install_python_api():
         _num_simplices_raw[cls] = cls.num_simplices
         _dimension_raw[cls] = cls.dimension
         _upper_bound_dimension_raw[cls] = cls.upper_bound_dimension
-        _simplex_dimension_raw[cls] = cls.simplex_dimension
+        # _simplex_dimension_raw[cls] = cls.simplex_dimension
         _find_simplex_raw[cls] = cls.find_simplex
         _remove_maximal_simplex_raw[cls] = cls.remove_maximal_simplex
         _prune_above_dimension_raw[cls] = cls.prune_above_dimension
@@ -764,9 +764,9 @@ def _install_python_api():
         _make_filtration_non_decreasing_raw[cls] = cls.make_filtration_non_decreasing
         _reset_filtration_raw[cls] = cls.reset_filtration
         _get_simplices_of_dimension_raw[cls] = cls.get_simplices_of_dimension
-        _get_key_raw[cls] = cls.get_key
-        _set_key_raw[cls] = cls.set_key
-        _set_keys_to_enumerate_raw[cls] = cls.set_keys_to_enumerate
+        # _get_key_raw[cls] = cls.get_key
+        # _set_key_raw[cls] = cls.set_key
+        # _set_keys_to_enumerate_raw[cls] = cls.set_keys_to_enumerate
         _get_filtration_values_raw[cls] = cls._get_filtration_values
         _squeeze_inplace_raw[cls] = cls._squeeze_inplace
         _squeeze_to_raw[cls] = cls._squeeze_to
@@ -800,9 +800,9 @@ def _install_python_api():
         cls.make_filtration_non_decreasing = _make_filtration_non_decreasing
         cls.reset_filtration = _reset_filtration
         cls.get_simplices_of_dimension = _get_simplices_of_dimension
-        cls.key = _key
-        cls.set_key = _set_key
-        cls.set_keys_to_enumerate = _set_keys_to_enumerate
+        # cls.key = _key
+        # cls.set_key = _set_key
+        # cls.set_keys_to_enumerate = _set_keys_to_enumerate
         cls.to_scc = _to_scc_file
         cls._get_filtration_values = _get_filtration_values
         cls._clean_filtration_grid = _clean_filtration_grid

@@ -65,28 +65,28 @@ std::pair<std::vector<std::vector<indices_type>>, std::vector<dtype>> get_euler_
 }
 
 
-template<typename Filtration, typename dtype, typename indices_type, typename ... Args>
-void get_euler_surface_python(
-	const intptr_t simplextree_ptr, 
-	dtype* data_ptr, 
-	const std::vector<indices_type> grid_shape,
-	bool mobius_inversion=false, 
-	bool zero_pad = false, 
-	bool verbose=false){
-	auto &st_multi = get_simplextree_from_pointer<python_interface::interface_multi<Filtration>>(simplextree_ptr);
-	tensor::static_tensor_view<dtype, indices_type> container(data_ptr,grid_shape); // assumes its a zero tensor
-	if (verbose){
-		std::cout << "Container shape : ";
-		for (auto r : container.get_resolution()) std::cout << r << ", ";
-		std::cout << "\nContainer size : " << container.size();
-		std::cout << "\nComputing Euler Characteristic ...";
-	}
-	get_euler_surface(st_multi,container,mobius_inversion, zero_pad);
-	if (verbose){
-		std::cout << "Done." << std::endl;
-	}
-	return;
-}
+// template<typename Filtration, typename dtype, typename indices_type, typename ... Args>
+// void get_euler_surface_python(
+// 	const intptr_t simplextree_ptr, 
+// 	dtype* data_ptr, 
+// 	const std::vector<indices_type> grid_shape,
+// 	bool mobius_inversion=false, 
+// 	bool zero_pad = false, 
+// 	bool verbose=false){
+// 	auto &st_multi = get_simplextree_from_pointer<python_interface::interface_multi<Filtration>>(simplextree_ptr);
+// 	tensor::static_tensor_view<dtype, indices_type> container(data_ptr,grid_shape); // assumes its a zero tensor
+// 	if (verbose){
+// 		std::cout << "Container shape : ";
+// 		for (auto r : container.get_resolution()) std::cout << r << ", ";
+// 		std::cout << "\nContainer size : " << container.size();
+// 		std::cout << "\nComputing Euler Characteristic ...";
+// 	}
+// 	get_euler_surface(st_multi,container,mobius_inversion, zero_pad);
+// 	if (verbose){
+// 		std::cout << "Done." << std::endl;
+// 	}
+// 	return;
+// }
 
 
 

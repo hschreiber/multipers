@@ -18,37 +18,37 @@ template <typename Filtration>
 using idx_map_type = std::vector<std::map<typename Filtration::value_type, int32_t>>;
 
 // O(num_simplices)
-template <typename Filtration>
-idx_map_type<Filtration> build_idx_map(interface_multi<Filtration> &st, const std::vector<int> &simplices_dimensions) {
-  auto num_parameters = st.num_parameters();
-  if (static_cast<int>(simplices_dimensions.size()) < num_parameters) throw;
-  int max_dim = *std::max_element(simplices_dimensions.begin(), simplices_dimensions.end());
-  int min_dim = *std::min_element(simplices_dimensions.begin(), simplices_dimensions.end());
-  max_dim = min_dim >= 0 ? max_dim : st.dimension();
+// template <typename Filtration>
+// idx_map_type<Filtration> build_idx_map(interface_multi<Filtration> &st, const std::vector<int> &simplices_dimensions) {
+//   auto num_parameters = st.num_parameters();
+//   if (static_cast<int>(simplices_dimensions.size()) < num_parameters) throw;
+//   int max_dim = *std::max_element(simplices_dimensions.begin(), simplices_dimensions.end());
+//   int min_dim = *std::min_element(simplices_dimensions.begin(), simplices_dimensions.end());
+//   max_dim = min_dim >= 0 ? max_dim : st.dimension();
 
-  idx_map_type<Filtration> idx_map(num_parameters);
-  auto splx_idx = 0u;
-  for (auto sh : st.complex_simplex_range()) {  // order has to be retrieved later, so I'm
-                                                // not sure that skeleton iterator is well
-                                                // suited
-    const auto &splx_filtration = st.filtration(sh);
-    const auto splx_dim = st.dimension(sh);
-    if (splx_dim <= max_dim)
-      for (auto i = 0u; i < splx_filtration.size(); i++) {
-        if (simplices_dimensions[i] != splx_dim and simplices_dimensions[i] != -1) continue;
-        auto f = splx_filtration[i];
-        idx_map[i].try_emplace(f, splx_idx);
-      }
-    splx_idx++;
-  }
-  return idx_map;
-}
+//   idx_map_type<Filtration> idx_map(num_parameters);
+//   auto splx_idx = 0u;
+//   for (auto sh : st.complex_simplex_range()) {  // order has to be retrieved later, so I'm
+//                                                 // not sure that skeleton iterator is well
+//                                                 // suited
+//     const auto &splx_filtration = st.filtration(sh);
+//     const auto splx_dim = st.dimension(sh);
+//     if (splx_dim <= max_dim)
+//       for (auto i = 0u; i < splx_filtration.size(); i++) {
+//         if (simplices_dimensions[i] != splx_dim and simplices_dimensions[i] != -1) continue;
+//         auto f = splx_filtration[i];
+//         idx_map[i].try_emplace(f, splx_idx);
+//       }
+//     splx_idx++;
+//   }
+//   return idx_map;
+// }
 
-template <typename Filtration, typename... Args>
-idx_map_type<Filtration> build_idx_map(const intptr_t simplextree_ptr, Args... args) {
-  auto &st_multi = get_simplextree_from_pointer<interface_multi<Filtration>>(simplextree_ptr);
-  return build_idx_map(st_multi, args...);
-}
+// template <typename Filtration, typename... Args>
+// idx_map_type<Filtration> build_idx_map(const intptr_t simplextree_ptr, Args... args) {
+//   auto &st_multi = get_simplextree_from_pointer<interface_multi<Filtration>>(simplextree_ptr);
+//   return build_idx_map(st_multi, args...);
+// }
 
 // O(signed_measure_size*num_parameters)
 template <typename Filtration>

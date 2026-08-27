@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <gudhi/simple_mdspan.h>
+#include <gudhi/multi_simplex_tree_helpers.h>
 
 #ifndef FUNCTION_DELAUNAY_TIMERS
 #define FUNCTION_DELAUNAY_TIMERS 0
@@ -478,7 +479,7 @@ inline function_delaunay_simplextree_interface_output convert_simplex_tree(Gudhi
     for (std::size_t vertex = 0; vertex < num_vertices; ++vertex) {
       column_values.push_back(lowerstar_view(vertex, parameter));
     }
-    out.fill_lowerstar(column_values, static_cast<int>(1 + parameter));
+    Gudhi::multi_persistence::fill_axis_with_lowerstar(out, column_values, static_cast<int>(1 + parameter));
   }
 
   return out;

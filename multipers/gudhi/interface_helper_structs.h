@@ -34,7 +34,7 @@
 #include <python_interfaces/construction_utils.h>
 
 #include "ext_interface/nanobind_wrapper_types.hpp"
-#include "slicer_interface_helpers.h"
+#include "interface_helpers.h"
 
 namespace Gudhi {
 namespace multi_persistence {
@@ -379,8 +379,7 @@ struct Compacted_squeezed_filtration_grid {
     {
       nanobind::gil_scoped_release release;
       for (auto simplex_handle : simplexTree.tree.complex_simplex_range()) {
-        auto pair = simplexTree.tree.get_simplex_and_filtration(simplex_handle);
-        const auto& f = *pair.second;
+        const auto& f = simplexTree.tree.get_filtration_value(simplex_handle);
         for (std::size_t g = 0; g < f.num_generators(); ++g) {
           for (std::size_t p = 0; p < numParam; ++p) {
             usedCoordinates[p].push_back(python::_cast_to_int<Index>(

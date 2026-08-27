@@ -141,8 +141,7 @@ Wrapper& normalize_filtrations_inplace(Wrapper& self, nb::object box_obj) {
       if (box_obj.is_none()) {
         std::vector<bool> has_finite(num_parameters, false);
         for (auto it = self.tree.get_simplices_iterator_begin(); it != self.tree.get_simplices_iterator_end(); ++it) {
-          auto simplex_and_filtration = self.tree.get_simplex_and_filtration(*it);
-          auto& filtration = *simplex_and_filtration.second;
+          const auto& filtration = self.tree.get_filtration_value(*it);
           for (size_t g = 0; g < filtration.num_generators(); ++g) {
             for (size_t p = 0; p < num_parameters; ++p) {
               const double value = static_cast<double>(filtration(g, p));
@@ -174,8 +173,7 @@ Wrapper& normalize_filtrations_inplace(Wrapper& self, nb::object box_obj) {
       }
 
       for (auto it = self.tree.get_simplices_iterator_begin(); it != self.tree.get_simplices_iterator_end(); ++it) {
-        auto simplex_and_filtration = self.tree.get_simplex_and_filtration(*it);
-        auto& filtration = *simplex_and_filtration.second;
+        auto& filtration = self.tree.get_filtration_value(*it);
         for (size_t g = 0; g < filtration.num_generators(); ++g) {
           for (size_t p = 0; p < num_parameters; ++p) {
             const double value = static_cast<double>(filtration(g, p));
@@ -793,43 +791,43 @@ void bind_typed_source_constructors(Class& cls) {
   bind_slicer_source_constructors<TargetDesc>(cls, SlicerDescriptorList{});
 }
 
-template <typename Wrapper, typename Filtration, typename T, bool IsKCritical>
-nb::list simplices_to_python(Wrapper& self) {
-  nb::list out;
-  for (auto sh : self.tree.complex_simplex_range()) {
-    auto pair = self.tree.get_simplex_and_filtration(sh);
-    std::vector<int32_t> simplex(pair.first.begin(), pair.first.end());
-    out.append(nb::make_tuple(nb::cast(owned_array<int32_t>(std::move(simplex), {pair.first.size()})),
-                              filtration_to_python<Filtration, T, IsKCritical>(*pair.second, nb::find(self))));
-  }
-  return out;
-}
+// template <typename Wrapper, typename Filtration, typename T, bool IsKCritical>
+// nb::list simplices_to_python(Wrapper& self) {
+//   nb::list out;
+//   for (auto sh : self.tree.complex_simplex_range()) {
+//     auto pair = self.tree.get_simplex_and_filtration(sh);
+//     std::vector<int32_t> simplex(pair.first.begin(), pair.first.end());
+//     out.append(nb::make_tuple(nb::cast(owned_array<int32_t>(std::move(simplex), {pair.first.size()})),
+//                               filtration_to_python<Filtration, T, IsKCritical>(*pair.second, nb::find(self))));
+//   }
+//   return out;
+// }
 
-template <typename Wrapper, typename Filtration, typename T, bool IsKCritical>
-nb::list skeleton_to_python(Wrapper& self, int dimension) {
-  nb::list out;
-  for (auto sh : self.tree.skeleton_simplex_range(dimension)) {
-    auto pair = self.tree.get_simplex_and_filtration(sh);
-    std::vector<int32_t> simplex(pair.first.begin(), pair.first.end());
-    out.append(nb::make_tuple(nb::cast(owned_array<int32_t>(std::move(simplex), {pair.first.size()})),
-                              filtration_to_python<Filtration, T, IsKCritical>(*pair.second, nb::find(self))));
-  }
-  return out;
-}
+// template <typename Wrapper, typename Filtration, typename T, bool IsKCritical>
+// nb::list skeleton_to_python(Wrapper& self, int dimension) {
+//   nb::list out;
+//   for (auto sh : self.tree.skeleton_simplex_range(dimension)) {
+//     auto pair = self.tree.get_simplex_and_filtration(sh);
+//     std::vector<int32_t> simplex(pair.first.begin(), pair.first.end());
+//     out.append(nb::make_tuple(nb::cast(owned_array<int32_t>(std::move(simplex), {pair.first.size()})),
+//                               filtration_to_python<Filtration, T, IsKCritical>(*pair.second, nb::find(self))));
+//   }
+//   return out;
+// }
 
-template <typename Wrapper, typename Filtration, typename T, bool IsKCritical>
-nb::list boundaries_to_python(Wrapper& self, const std::vector<int>& simplex) {
-  nb::list out;
-  auto it_pair = self.tree.get_boundary_iterators(simplex);
-  while (it_pair.first != it_pair.second) {
-    auto pair = self.tree.get_simplex_and_filtration(*it_pair.first);
-    std::vector<int32_t> current(pair.first.begin(), pair.first.end());
-    out.append(nb::make_tuple(nb::cast(owned_array<int32_t>(std::move(current), {pair.first.size()})),
-                              filtration_to_python<Filtration, T, IsKCritical>(*pair.second, nb::find(self))));
-    ++it_pair.first;
-  }
-  return out;
-}
+// template <typename Wrapper, typename Filtration, typename T, bool IsKCritical>
+// nb::list boundaries_to_python(Wrapper& self, const std::vector<int>& simplex) {
+//   nb::list out;
+//   auto it_pair = self.tree.get_boundary_iterators(simplex);
+//   while (it_pair.first != it_pair.second) {
+//     auto pair = self.tree.get_simplex_and_filtration(*it_pair.first);
+//     std::vector<int32_t> current(pair.first.begin(), pair.first.end());
+//     out.append(nb::make_tuple(nb::cast(owned_array<int32_t>(std::move(current), {pair.first.size()})),
+//                               filtration_to_python<Filtration, T, IsKCritical>(*pair.second, nb::find(self))));
+//     ++it_pair.first;
+//   }
+//   return out;
+// }
 
 template <typename Wrapper>
 nb::ndarray<nb::numpy, uint8_t> serialized_state(Wrapper& self) {
@@ -858,8 +856,8 @@ void load_state(Wrapper& self, nb::handle state) {
       auto it = self.tree.complex_simplex_range().begin();
       auto end = self.tree.complex_simplex_range().end();
       if (it != end) {
-        auto pair = self.tree.get_simplex_and_filtration(*it);
-        num_parameters = pair.second->num_parameters();
+        auto f = self.tree.get_filtration_value(*it);
+        num_parameters = f.num_parameters();
       }
     }
     self.tree.set_num_parameters(num_parameters);
@@ -1157,15 +1155,15 @@ void bind_simplextree_class(nb::module_& m, nb::list& available_simplextrees) {
           },
           "simplex"_a,
           nb::keep_alive<0, 1>())
-      .def("_get_skeleton",
-           [](Wrapper& self, int dimension) {
-             return skeleton_to_python<Wrapper, Filtration, Value, k_is_kcritical>(self, dimension);
-           })
-      .def("_get_boundaries",
-           [](Wrapper& self, nb::handle simplex_handle) {
-             return boundaries_to_python<Wrapper, Filtration, Value, k_is_kcritical>(
-                 self, vector_from_handle<int>(simplex_handle));
-           })
+      // .def("_get_skeleton",
+      //      [](Wrapper& self, int dimension) {
+      //        return skeleton_to_python<Wrapper, Filtration, Value, k_is_kcritical>(self, dimension);
+      //      })
+      // .def("_get_boundaries",
+      //      [](Wrapper& self, nb::handle simplex_handle) {
+      //        return boundaries_to_python<Wrapper, Filtration, Value, k_is_kcritical>(
+      //            self, vector_from_handle<int>(simplex_handle));
+      //      })
       .def("_get_filtration_values",
            [](Wrapper& self, nb::handle degrees_handle) {
              auto degrees = vector_from_handle<int>(degrees_handle);
@@ -1240,10 +1238,10 @@ void bind_simplextree_class(nb::module_& m, nb::list& available_simplextrees) {
       .def("num_simplices", [](Wrapper& self) -> int { return self.tree.num_simplices(); })
       .def("dimension", [](Wrapper& self) -> int { return self.tree.dimension(); })
       .def("upper_bound_dimension", [](Wrapper& self) -> int { return self.tree.upper_bound_dimension(); })
-      .def("simplex_dimension",
-           [](Wrapper& self, nb::handle simplex_handle) {
-             return self.tree.simplex_dimension(vector_from_handle<int>(simplex_handle));
-           })
+      // .def("simplex_dimension",
+      //      [](Wrapper& self, nb::handle simplex_handle) {
+      //        return self.tree.simplex_dimension(vector_from_handle<int>(simplex_handle));
+      //      })
       .def("find_simplex",
            [](Wrapper& self, nb::handle simplex_handle) {
              auto simplex = vector_from_handle<int>(simplex_handle);
@@ -1375,31 +1373,31 @@ void bind_simplextree_class(nb::module_& m, nb::list& available_simplextrees) {
             return self;
           },
           nb::rv_policy::reference_internal)
-      .def(
-          "set_key",
-          [](Wrapper& self, nb::handle simplex_handle, int key) -> Wrapper& {
-            auto simplex = vector_from_handle<int>(simplex_handle);
-            {
-              nb::gil_scoped_release release;
-              self.tree.set_key(simplex, key);
-            }
-            return self;
-          },
-          nb::rv_policy::reference_internal)
-      .def("get_key",
-           [](Wrapper& self, nb::handle simplex_handle) {
-             return self.tree.get_key(vector_from_handle<int>(simplex_handle));
-           })
-      .def(
-          "set_keys_to_enumerate",
-          [](Wrapper& self) -> Wrapper& {
-            {
-              nb::gil_scoped_release release;
-              self.tree.set_keys_to_enumerate();
-            }
-            return self;
-          },
-          nb::rv_policy::reference_internal)
+      // .def(
+      //     "set_key",
+      //     [](Wrapper& self, nb::handle simplex_handle, int key) -> Wrapper& {
+      //       auto simplex = vector_from_handle<int>(simplex_handle);
+      //       {
+      //         nb::gil_scoped_release release;
+      //         self.tree.set_key(simplex, key);
+      //       }
+      //       return self;
+      //     },
+      //     nb::rv_policy::reference_internal)
+      // .def("get_key",
+      //      [](Wrapper& self, nb::handle simplex_handle) {
+      //        return self.tree.get_key(vector_from_handle<int>(simplex_handle));
+      //      })
+      // .def(
+      //     "set_keys_to_enumerate",
+      //     [](Wrapper& self) -> Wrapper& {
+      //       {
+      //         nb::gil_scoped_release release;
+      //         self.tree.set_keys_to_enumerate();
+      //       }
+      //       return self;
+      //     },
+      //     nb::rv_policy::reference_internal)
       .def(
           "set_num_parameter",
           [](Wrapper& self, int num) -> Wrapper& {

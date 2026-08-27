@@ -48,7 +48,7 @@
 
 #include "Simplex_tree_multi_interface.h"
 #include "python_interfaces/construction_utils.h"
-#include "slicer_interface_helpers.h"
+#include "interface_helpers.h"
 #include "interface_helper_structs.h"
 #include "ext_interface/nanobind_wrapper_types.hpp"
 
@@ -382,7 +382,7 @@ class Slicer_interface {
     if constexpr (!detail::_is_degree_rips<MultiFiltrationValue>()) {
       if (viewIfPossible) return detail::_get_raw_filtration_data(f, false);
     }
-    return nanobind::cast(_get_filtration_array(f));
+    return nanobind::cast(detail::_get_filtration_array(f));
   }
 
   [[nodiscard]] nanobind::object get_all_filtration_values(bool compact,
@@ -858,24 +858,6 @@ class Slicer_interface {
   int presDegree_;
   bool isMinPres_;
   bool isMinRes_;
-
-  static auto _get_filtration_array(const MultiFiltrationValue &f) {
-    std::vector<value_type> values(f.num_generators() * f.num_parameters());
-    Gudhi::Simple_mdspan view(values.data(), f.num_generators(), f.num_parameters());
-    {
-      nanobind::gil_scoped_release release;
-      for (std::size_t g = 0; g < f.num_generators(); ++g) {
-        for (std::size_t p = 0; p < f.num_parameters(); ++p) {
-          view(g, p) = f(g, p);
-        }
-      }
-    }
-    if constexpr (MultiFiltrationValue::ensures_1_criticality()) {
-      return _wrap_as_numpy_array(std::move(values), f.num_parameters());
-    } else {
-      return _wrap_as_numpy_array(std::move(values), f.num_generators(), f.num_parameters());
-    }
-  }
 
   static nanobind::tuple _get_compact_filtration_array(const typename Complex::Filtration_value_container &filts,
                                                        int numParam) {

@@ -9,13 +9,13 @@
  */
 
 /**
- * @file slicer_interface_helpers.h
+ * @file interface_helpers.h
  * @author Hannah Schreiber
  * @brief Contains helpers for the @ref Gudhi::multi_persistence::Slicer_interface class for python bindings.
  */
 
-#ifndef MP_PY_SLICER_HELPERS_H_INCLUDED
-#define MP_PY_SLICER_HELPERS_H_INCLUDED
+#ifndef MP_PY_INTERFACE_HELPERS_H_INCLUDED
+#define MP_PY_INTERFACE_HELPERS_H_INCLUDED
 
 #include <cstddef>
 #include <cstdint>
@@ -342,6 +342,25 @@ inline nanobind::tuple _get_compact_filtration_data(
                               _wrap_as_numpy_array(std::move(values), values.size()));
 }
 
+template <class MultiFiltrationValue>
+inline auto _get_filtration_array(const MultiFiltrationValue &f) {
+  std::vector<typename MultiFiltrationValue::value_type> values(f.num_generators() * f.num_parameters());
+  Gudhi::Simple_mdspan view(values.data(), f.num_generators(), f.num_parameters());
+  {
+    nanobind::gil_scoped_release release;
+    for (std::size_t g = 0; g < f.num_generators(); ++g) {
+      for (std::size_t p = 0; p < f.num_parameters(); ++p) {
+        view(g, p) = f(g, p);
+      }
+    }
+  }
+  if constexpr (MultiFiltrationValue::ensures_1_criticality()) {
+    return _wrap_as_numpy_array(std::move(values), f.num_parameters());
+  } else {
+    return _wrap_as_numpy_array(std::move(values), f.num_generators(), f.num_parameters());
+  }
+}
+
 template <typename T, typename U>
 struct Flat_2D_array_span {
   using Del_array = nanobind::ndarray<const T, nanobind::ndim<1>, nanobind::any_contig>;
@@ -367,4 +386,4 @@ struct Flat_2D_array_span {
 }  // namespace multi_persistence
 }  // namespace Gudhi
 
-#endif  // MP_PY_SLICER_HELPERS_H_INCLUDED
+#endif  // MP_PY_INTERFACE_HELPERS_H_INCLUDED
