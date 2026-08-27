@@ -29,9 +29,10 @@
 #include <nanobind/ndarray.h>
 
 #include <gudhi/Slicer.h>
-#include <gudhi/Degree_rips_bifiltration.h>
-#include <gudhi/Dynamic_multi_parameter_filtration.h>
-#include <gudhi/Multi_parameter_filtration.h>
+#include <gudhi/Multi_filtration/Flat_array_filtration.h>
+#include <gudhi/Multi_filtration/Nested_array_filtration.h>
+#include <gudhi/Multi_filtration/Degree_bifiltration.h>
+#include <gudhi/Multi_parameter_filtration_value.h>
 #include <python_interfaces/numpy_utils.h>
 #include <python_interfaces/construction_utils.h>
 
@@ -183,7 +184,7 @@ inline auto _dispatch_dtype(nanobind::handle data, F &&func, F_empty &&funcEmpty
     case Array_dtype::EMPTY:
       return Union(std::forward<F_empty>(funcEmpty)());
     default:
-      Union(std::forward<F_unknown>(funcUnkown)());
+      return Union(std::forward<F_unknown>(funcUnkown)());
   }
 }
 
@@ -247,44 +248,42 @@ inline auto _dispatch_dtype(nanobind::handle data, F &&func, F_empty &&funcEmpty
 template <class MultiFiltrationValue>
 constexpr bool _is_degree_rips() {
   using T = typename MultiFiltrationValue::value_type;
-  constexpr bool co = MultiFiltrationValue::has_negative_cones();
-  constexpr bool oneCrit = MultiFiltrationValue::ensures_1_criticality();
+  using SP = typename MultiFiltrationValue::Storage_policy;
 
-  return std::is_same_v<MultiFiltrationValue, multi_filtration::Degree_rips_bifiltration<T, co, oneCrit>>;
+  return std::is_same_v<SP, multi_filtration::Degree_bifiltration<T>>;
 }
 
 template <class MultiFiltrationValue>
 constexpr bool _is_dynamic() {
   using T = typename MultiFiltrationValue::value_type;
-  constexpr bool co = MultiFiltrationValue::has_negative_cones();
-  constexpr bool oneCrit = MultiFiltrationValue::ensures_1_criticality();
+  using SP = typename MultiFiltrationValue::Storage_policy;
 
-  return std::is_same_v<MultiFiltrationValue, multi_filtration::Dynamic_multi_parameter_filtration<T, co, oneCrit>>;
+  return std::is_same_v<SP, multi_filtration::Nested_array_filtration<T>>;
 }
 
 template <class MultiFiltrationValue>
 constexpr bool _is_flat() {
   using T = typename MultiFiltrationValue::value_type;
-  constexpr bool co = MultiFiltrationValue::has_negative_cones();
-  constexpr bool oneCrit = MultiFiltrationValue::ensures_1_criticality();
+  using SP = typename MultiFiltrationValue::Storage_policy;
 
-  return std::is_same_v<MultiFiltrationValue, multi_filtration::Multi_parameter_filtration<T, co, oneCrit>>;
+  return std::is_same_v<SP, multi_filtration::Flat_array_filtration<T>>;
 }
 
 template <typename T, bool Co, bool OneCritical>
 inline nanobind::object _get_raw_filtration_data(
-    multi_filtration::Dynamic_multi_parameter_filtration<T, Co, OneCritical> &f,
+    multi_filtration::Multi_parameter_filtration_value<multi_filtration::Nested_array_filtration<T>, Co, OneCritical>
+        &f,
     bool copy) {
   if constexpr (OneCritical) {
     if (copy) {
-      std::vector<T> copy(f[0].begin(), f[0].end());
+      std::vector<T> copy(f.begin(0), f.end(0));
       return nanobind::cast(_wrap_as_numpy_array(std::move(copy), f.num_parameters()));
     }
     return nanobind::cast(_wrap_view_as_numpy_array<false>(&f(0, 0), f.num_parameters()));
   } else {
     return Gudhi::python::_build_tuple(f.num_generators(), [&](std::size_t g) -> nanobind::object {
       if (copy) {
-        std::vector<T> copy(f[g].begin(), f[g].end());
+        std::vector<T> copy(f.begin(g), f.end(g));
         return nanobind::cast(_wrap_as_numpy_array(std::move(copy), f.num_parameters()));
       }
       return nanobind::cast(_wrap_view_as_numpy_array<false>(&f(g, 0), f.num_parameters()));
@@ -293,36 +292,42 @@ inline nanobind::object _get_raw_filtration_data(
 }
 
 template <typename T, bool Co, bool OneCritical>
-inline nanobind::object _get_raw_filtration_data(multi_filtration::Multi_parameter_filtration<T, Co, OneCritical> &f,
-                                                 bool copy) {
+inline nanobind::object _get_raw_filtration_data(
+    multi_filtration::Multi_parameter_filtration_value<multi_filtration::Flat_array_filtration<T>, Co, OneCritical> &f,
+    bool copy) {
+  auto &container = f.get_underlying_container();
   if constexpr (OneCritical) {
     if (copy) {
-      std::vector<T> copy(f.begin(), f.end());
+      std::vector<T> copy(container.begin(), container.end());
       return nanobind::cast(_wrap_as_numpy_array(std::move(copy), f.num_parameters()));
     }
-    return nanobind::cast(_wrap_view_as_numpy_array<false>(&f(0, 0), f.num_parameters()));
+    return nanobind::cast(_wrap_view_as_numpy_array<false>(container.data(), f.num_parameters()));
   } else {
     if (copy) {
-      std::vector<T> copy(f.begin(), f.end());
+      std::vector<T> copy(container.begin(), container.end());
       return nanobind::cast(_wrap_as_numpy_array(std::move(copy), f.num_generators(), f.num_parameters()));
     }
-    return nanobind::cast(_wrap_view_as_numpy_array<false>(&f(0, 0), f.num_generators(), f.num_parameters()));
+    return nanobind::cast(_wrap_view_as_numpy_array<false>(container.data(), f.num_generators(), f.num_parameters()));
   }
 }
 
 template <typename T, bool Co, bool OneCritical>
-inline nanobind::object _get_raw_filtration_data(multi_filtration::Degree_rips_bifiltration<T, Co, OneCritical> &f,
-                                                 bool copy) {
+inline nanobind::object _get_raw_filtration_data(
+    multi_filtration::Multi_parameter_filtration_value<multi_filtration::Degree_bifiltration<T>, Co, OneCritical> &f,
+    bool copy) {
+  auto &container = f.get_underlying_container();
   if (copy) {
-    std::vector<T> copy(f.begin(), f.end());
+    std::vector<T> copy(container.begin(), container.end());
     return nanobind::cast(_wrap_as_numpy_array(std::move(copy), f.num_generators()));
   }
-  return nanobind::cast(_wrap_view_as_numpy_array<false>(&f(0, 0), f.num_generators()));
+  return nanobind::cast(_wrap_view_as_numpy_array<false>(container.data(), f.num_generators()));
 }
 
 template <typename T, bool Co, bool OneCritical>
 inline nanobind::tuple _get_compact_filtration_data(
-    const std::vector<multi_filtration::Degree_rips_bifiltration<T, Co, OneCritical>> &filts) {
+    const std::vector<
+        multi_filtration::Multi_parameter_filtration_value<multi_filtration::Degree_bifiltration<T>, Co, OneCritical>>
+        &filts) {
   std::vector<T> values;
   std::vector<std::int64_t> startIndices(filts.size() + 1, 0);
 
@@ -333,8 +338,8 @@ inline nanobind::tuple _get_compact_filtration_data(
     }
     values.resize(startIndices.back());
     for (std::size_t i = 0; i < filts.size(); ++i) {
-      const auto &f = filts[i];
-      std::copy(f.begin(), f.end(), values.begin() + startIndices[i]);
+      const auto &container = filts[i].get_underlying_container();
+      std::copy(container.begin(), container.end(), values.begin() + startIndices[i]);
     }
   }
 

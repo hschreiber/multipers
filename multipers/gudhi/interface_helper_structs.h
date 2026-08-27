@@ -374,7 +374,9 @@ struct Compacted_squeezed_filtration_grid {
   template <typename Interface, typename T>
   static std::vector<std::vector<Index>> collect_used_squeezed_coordinates(
       multipers::nanobind_helpers::PySimplexTree<Interface, T>& simplexTree) {
-    const auto numParam = simplexTree.tree.num_parameters();
+    if (simplexTree.tree.num_parameters() <= 0)
+      throw std::runtime_error("Number of parameters should not be negative or zero.");
+    std::size_t numParam = simplexTree.tree.num_parameters();
     std::vector<std::vector<Index>> usedCoordinates(numParam);
     {
       nanobind::gil_scoped_release release;
@@ -460,9 +462,9 @@ struct Compacted_squeezed_filtration_grid {
 
   void _get_compact_grid(nanobind::iterable grid) {
     if (!nanobind::hasattr(grid, "__getitem__")) throw nanobind::type_error("Grid has to support subscripting.");
-    Index gridSize = 0;
+    std::size_t gridSize = 0;
     if (nanobind::hasattr(grid, "__len__")) {
-      gridSize = static_cast<Index>(nanobind::len(grid));
+      gridSize = static_cast<std::size_t>(nanobind::len(grid));
     } else {
       for (auto it = grid.begin(); it != grid.end(); ++it) ++gridSize;
     }
