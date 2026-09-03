@@ -313,7 +313,7 @@ void copy_simplicial_slicer_to_simplextree(TargetInterface& out, const SourceSli
     if constexpr (std::is_same_v<TargetFiltration, typename SourceSlicer::Filtration_value>) {
       converted_filtrations.push_back(filtrations[i]);
     } else {
-      converted_filtrations.push_back(as_type<TargetFiltration>(filtrations[i]));
+      converted_filtrations.push_back(filtrations[i].template as_type<TargetFiltration>());
     }
     out.insert(simplices.back(), converted_filtrations.back());
   }

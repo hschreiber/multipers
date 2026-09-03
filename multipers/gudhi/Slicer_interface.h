@@ -41,7 +41,6 @@
 #include <gudhi/slicer_helpers.h>
 #include <gudhi/Slicer.h>
 #include <gudhi/multi_persistence_landscapes.h>
-#include <gudhi/Degree_rips_bifiltration.h>
 #include <gudhi/Multi_persistence/Line.h>
 #include <gudhi/Multi_persistence/utils.h>
 #include <python_interfaces/numpy_utils.h>
@@ -198,7 +197,7 @@ class Slicer_interface {
       return;
     }
     std::size_t numGen = boundaryDelimitersView.shape(0) - 1;
-    if (boundaryDelimitersView(numGen) > boundariesView.shape(0))
+    if (static_cast<std::size_t>(boundaryDelimitersView(numGen)) > boundariesView.shape(0))
       throw std::invalid_argument("Boundary index ptr and flat boundaries are not coherent.");
     if (dimensionsView.shape(0) != numGen || filValuesView.shape(0) != numGen)
       throw std::invalid_argument("Invalid packed input, shapes do not coincide.");
@@ -483,11 +482,7 @@ class Slicer_interface {
 
   template <typename U>
   Slicer_interface &normalize_filtration_values(const std::optional<Tensor2D<U>> &box) {
-    if constexpr (std::is_same_v<MultiFiltrationValue,
-                                 Gudhi::multi_filtration::Degree_rips_bifiltration<
-                                     value_type,
-                                     MultiFiltrationValue::has_negative_cones(),
-                                     MultiFiltrationValue::ensures_1_criticality()>>) {
+    if constexpr (MultiFiltrationValue::Storage_policy::has_an_implicit_axis) {
       throw nanobind::type_error("Degree-Rips slicers cannot be affinely normalized.");
     } else if constexpr (!std::is_floating_point_v<value_type>) {
       throw nanobind::type_error("Normalize filtration requires a floating-point dtype for slicers.");
@@ -860,7 +855,7 @@ class Slicer_interface {
   bool isMinRes_;
 
   static nanobind::tuple _get_compact_filtration_array(const typename Complex::Filtration_value_container &filts,
-                                                       int numParam) {
+                                                       Index numParam) {
     std::vector<value_type> values;
     std::vector<std::int64_t> startIndices(filts.size() + 1, 0);
 
@@ -876,7 +871,7 @@ class Slicer_interface {
           throw std::runtime_error("Inconsistent number of parameters in stored filtration values");
         Gudhi::Simple_mdspan view(&values[startIndices[i] * numParam], f.num_generators(), numParam);
         for (std::size_t g = 0; g < f.num_generators(); ++g) {
-          for (std::size_t p = 0; p < numParam; ++p) {
+          for (std::size_t p = 0; p < static_cast<std::size_t>(numParam); ++p) {
             view(g, p) = f(g, p);
           }
         }
@@ -896,7 +891,7 @@ class Slicer_interface {
         Gudhi::Simple_mdspan view(values.data(), filts.size(), numParam);
         for (std::size_t i = 0; i < filts.size(); ++i) {
           const auto &f = filts[i];
-          if (numParam != f.num_parameters())
+          if (static_cast<std::size_t>(numParam) != f.num_parameters())
             throw std::runtime_error("Inconsistent number of parameters in stored filtration values");
           for (int p = 0; p < numParam; ++p) {
             view(i, p) = f(0, p);
@@ -911,7 +906,7 @@ class Slicer_interface {
         nanobind::gil_scoped_release release;
         for (std::size_t i = 0; i < filts.size(); ++i) {
           const auto &f = filts[i];
-          if (numParam != f.num_parameters())
+          if (static_cast<std::size_t>(numParam) != f.num_parameters())
             throw std::runtime_error("Inconsistent number of parameters in stored filtration values");
           values[i].resize(f.num_generators() * numParam);
           Gudhi::Simple_mdspan view(values[i].data(), f.num_generators(), numParam);
