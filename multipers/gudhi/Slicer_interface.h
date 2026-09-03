@@ -855,7 +855,7 @@ class Slicer_interface {
   bool isMinRes_;
 
   static nanobind::tuple _get_compact_filtration_array(const typename Complex::Filtration_value_container &filts,
-                                                       int numParam) {
+                                                       Index numParam) {
     std::vector<value_type> values;
     std::vector<std::int64_t> startIndices(filts.size() + 1, 0);
 
