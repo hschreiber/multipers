@@ -79,14 +79,38 @@ class Slicer_interface {
   Slicer_interface()
       : slicer_(), filtrationGrid_(nanobind::none()), presDegree_(-1), isMinPres_(false), isMinRes_(false) {};
 
-  template <class OtherMultiFiltrationValue, class OtherPersistenceAlgorithm>
-  Slicer_interface(const Slicer_interface<OtherMultiFiltrationValue, OtherPersistenceAlgorithm> &other)
-      : slicer_(other.get_slicer()),
+  Slicer_interface(const Slicer_interface &other)
+      : slicer_(),
         filtrationGrid_(other.get_filtration_grid()),
-        generatorBasis_(other.get_generator_basis()),
+        generatorBasis_(),
         presDegree_(other.get_pres_degree()),
         isMinPres_(other.is_min_pres()),
-        isMinRes_(other.is_min_res()) {}
+        isMinRes_(other.is_min_res()) {
+    nanobind::gil_scoped_release release;
+    slicer_ = other.get_slicer();
+    generatorBasis_ = other.get_generator_basis();
+  }
+
+  Slicer_interface(Slicer_interface &&other) noexcept = default;
+
+  // TODO: I feel like it would be safer to remove all the constructors taking a generic Slicer and a Simplex tree and
+  // to force the use of the method copy/as_type instead to avoid unwanted conversions?
+  // TODO: the use of slicer and the complex should be better separated and therefore the complex interfaced.
+  // When constructing a slicer from a simple tree, we should be constructing the complex instead and then lend
+  // the complex to the slicer when needed. Is the slicer even ever used as a slicer in python?
+
+  template <class OtherMultiFiltrationValue, class OtherPersistenceAlgorithm>
+  Slicer_interface(const Slicer_interface<OtherMultiFiltrationValue, OtherPersistenceAlgorithm> &other)
+      : slicer_(),
+        filtrationGrid_(other.get_filtration_grid()),
+        generatorBasis_(),
+        presDegree_(other.get_pres_degree()),
+        isMinPres_(other.is_min_pres()),
+        isMinRes_(other.is_min_res()) {
+    nanobind::gil_scoped_release release;
+    slicer_ = other.get_slicer();
+    generatorBasis_ = other.get_generator_basis();
+  }
 
   template <class OtherMultiFiltrationValue, class OtherPersistenceAlgorithm>
   Slicer_interface(const Slicer_interface<OtherMultiFiltrationValue, OtherPersistenceAlgorithm> &other,
@@ -104,19 +128,15 @@ class Slicer_interface {
                    Gudhi::multiparameter::python_interface::Simplex_tree_multi_interface<OtherMultiFiltrationValue>,
                    typename OtherMultiFiltrationValue::value_type> &simplexTree)
       : slicer_(), filtrationGrid_(simplexTree.filtration_grid), presDegree_(-1), isMinPres_(false), isMinRes_(false) {
-    {
-      nanobind::gil_scoped_release release;
-      slicer_ = Gudhi::multi_persistence::build_slicer_from_simplex_tree<Slicer_t>(simplexTree.tree);
-    }
+    nanobind::gil_scoped_release release;
+    slicer_ = Gudhi::multi_persistence::build_slicer_from_simplex_tree<Slicer_t>(simplexTree.tree);
   }
 
   Slicer_interface(const std::string &path, int shiftDimension, bool isRivetCompatible = false, bool isReversed = false)
       : slicer_(), filtrationGrid_(nanobind::none()), presDegree_(-1), isMinPres_(false), isMinRes_(false) {
-    {
-      nanobind::gil_scoped_release release;
-      slicer_ = Gudhi::multi_persistence::build_slicer_from_scc_file<Slicer_t>(
-          path, isRivetCompatible, isReversed, shiftDimension);
-    }
+    nanobind::gil_scoped_release release;
+    slicer_ = Gudhi::multi_persistence::build_slicer_from_scc_file<Slicer_t>(
+        path, isRivetCompatible, isReversed, shiftDimension);
   }
 
   Slicer_interface(const std::vector<std::vector<Index>> &generator_maps,
@@ -231,6 +251,27 @@ class Slicer_interface {
       slicer_ = Gudhi::multi_persistence::build_slicer_from_bitmap<Slicer_t>(vertices, shape);
     }
   }
+
+  Slicer_interface &operator=(const Slicer_interface &other) {
+    {
+      nanobind::gil_scoped_release release;
+      slicer_ = other.slicer_;
+      generatorBasis_ = other.generatorBasis_;
+      presDegree_ = other.presDegree_;
+      isMinPres_ = other.isMinPres_;
+      isMinRes_ = other.isMinPres_;
+    }
+    // TODO:
+    // note that this a bit like a pointer copy, so problematic if the two slicers are supposed to work
+    // independently on the grid, but I feel like it never happens ? (i.e. the grid is none when the slicer needs
+    // to be copied.) Still a bit dangerous, but at the same time we don't want to pay for a copy if not necessary.
+    // I will need a better understanding of how the grid is used.
+    // same for the various copy constructors btw.
+    filtrationGrid_ = other.filtrationGrid_;
+    return *this;
+  }
+
+  Slicer_interface& operator=(Slicer_interface&& other) noexcept = default;
 
   template <class OtherMultiFiltrationValue, class OtherPersistenceAlgorithm>
   Slicer_interface &copy(const Slicer_interface<OtherMultiFiltrationValue, OtherPersistenceAlgorithm> &other) {
@@ -858,13 +899,15 @@ class Slicer_interface {
                                                        Index numParam) {
     std::vector<value_type> values;
     std::vector<std::int64_t> startIndices(filts.size() + 1, 0);
+    std::size_t numGen;
 
     {
       nanobind::gil_scoped_release release;
       for (std::size_t i = 0; i < filts.size(); ++i) {
         startIndices[i + 1] = startIndices[i] + filts[i].num_generators();
       }
-      values.resize(startIndices.back() * numParam);
+      numGen = startIndices.back();
+      values.resize(numGen * numParam);
       for (std::size_t i = 0; i < filts.size(); ++i) {
         const auto &f = filts[i];
         if (numParam != f.num_parameters())
@@ -879,7 +922,7 @@ class Slicer_interface {
     }
 
     return nanobind::make_tuple(_wrap_as_numpy_array(std::move(startIndices), startIndices.size()),
-                                _wrap_as_numpy_array(std::move(values), startIndices.back(), numParam));
+                                _wrap_as_numpy_array(std::move(values), numGen, numParam));
   }
 
   static nanobind::object _get_filtration_array(const typename Complex::Filtration_value_container &filts,
@@ -1087,10 +1130,12 @@ class Slicer_interface {
     std::unordered_set<Index> points;
     if (pointsToIntersect.has_value()) {
       if (generatorBasis_.has_value())
-        PyErr_WarnEx(PyExc_UserWarning,
-                     " When there is a generator basis, points to intersect are ignored for dimensions different of 1 "
-                     "for now: to be implemented.",
-                     1);
+        if (PyErr_WarnEx(
+                PyExc_UserWarning,
+                " When there is a generator basis, points to intersect are ignored for dimensions different of 1 "
+                "for now: to be implemented.",
+                1) < 0)
+          return {};
       Numpy_span view(*pointsToIntersect);
       points.reserve(view.size());
       points.insert(view.begin(), view.end());
@@ -1169,10 +1214,12 @@ class Slicer_interface {
     std::unordered_set<Index> points;
     if (pointsToIntersect.has_value()) {
       if (dimension != 1 && generatorBasis_.has_value()) {
-        PyErr_WarnEx(PyExc_UserWarning,
-                     "When there is a generator basis, points to intersect are ignored for dimensions different of 1 "
-                     "for now: to be implemented.",
-                     1);
+        if (PyErr_WarnEx(
+                PyExc_UserWarning,
+                "When there is a generator basis, points to intersect are ignored for dimensions different of 1 "
+                "for now: to be implemented.",
+                1) < 0)
+          return {};
       } else {
         Numpy_span view(*pointsToIntersect);
         points.reserve(view.size());
@@ -1190,7 +1237,11 @@ class Slicer_interface {
       auto compute_boundaries = [&](const auto &range) {
         if (pointsToIntersect.has_value() && !generatorBasis_.has_value()) {
           // pre-initialize cache in sequential loop to avoid problems in parallelization
-          inter.initialize_cache(range.size(), [&](std::size_t i) -> const auto & { return cycleIdx[range[i]]; });
+          inter.initialize_cache(range.size(), [&](std::size_t i) -> const auto & {
+            // i has to be in range as it goes from 0 to range.size() (exclusive) in `initialize_cache`
+            if (range[i] >= cycleIdx.size()) throw std::out_of_range("Given barcode index is out of range.");
+            return cycleIdx[range[i]];
+          });
         }
         tbb::parallel_for(std::size_t(0), range.size(), [&](std::size_t idx) {
           const auto &cycle = cycleIdx[range[idx]];
@@ -1242,7 +1293,9 @@ inline SlicerInterface deserialize_slicer_from_python(nanobind::tuple state) {
   SlicerInterface slicer;
   {
     nanobind::gil_scoped_release release;
-    deserialize_value_from_char_buffer(slicer, data.data());
+    const char *end = deserialize_value_from_char_buffer(slicer, data.data());
+    if (static_cast<std::size_t>(end - data.data()) != data.size())
+      throw std::runtime_error("Invalid serialized slicer state.");
   }
   slicer.set_filtration_grid(state[1]);
   return slicer;

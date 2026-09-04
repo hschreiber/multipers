@@ -769,7 +769,9 @@ inline Module_interface<T> deserialize_module_from_python(
   Module_interface<T> mod;
   {
     nanobind::gil_scoped_release release;
-    deserialize_value_from_char_buffer(mod, state.data());
+    const char *end = deserialize_value_from_char_buffer(mod, state.data());
+    if (static_cast<std::size_t>(end - state.data()) != state.size())
+      throw std::runtime_error("Invalid serialized module state.");
   }
   return mod;
 }

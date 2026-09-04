@@ -50,7 +50,7 @@ nb::object ensure_canonical_slicer_object_impl(const nb::object& input, IsCanoni
   nb::object out = nb::borrow<nb::object>(nb::type<CanonicalWrapper>())();
   auto& out_wrapper = nb::cast<CanonicalWrapper&>(out);
   visit_const_slicer_wrapper(input, [&]<typename Desc>(const typename Desc::interface& source) {
-    out_wrapper = typename Desc::interface(source);
+    out_wrapper.copy(source);
   });
   return out;
 }

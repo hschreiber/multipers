@@ -61,7 +61,12 @@ inline Array_dtype _get_dtype(const nanobind::dlpack::dtype &dt) {
   return Array_dtype::UNKNOWN;
 }
 
-inline Array_dtype _get_dtype(nanobind::handle obj) {
+inline Array_dtype _get_dtype(nanobind::handle obj, int depth = 0) {
+  constexpr int maxRecursionDepth = 32; // same limit than for numpy, seems reasonable
+  if (depth > maxRecursionDepth) {
+    throw nanobind::value_error("Exceeded maximum nesting depth while inferring dtype.");
+  }
+
   // special case of ndarray
   if (nanobind::ndarray<> arr; nanobind::try_cast<nanobind::ndarray<>>(obj, arr)) {
     return _get_dtype(arr.dtype());
@@ -70,12 +75,16 @@ inline Array_dtype _get_dtype(nanobind::handle obj) {
   // terminal case of recursion
   if (nanobind::isinstance<nanobind::int_>(obj)) return Array_dtype::INT64;
   if (nanobind::isinstance<nanobind::float_>(obj)) return Array_dtype::FLOAT64;
+  // to avoid weird inf recursion because e.g. str[0] yield another str in python
+  if (PyUnicode_Check(obj.ptr()) || PyBytes_Check(obj.ptr()) || PyByteArray_Check(obj.ptr())) {
+    throw nanobind::type_error("Expected an arithmetic dtype: got str/bytes-like object.");
+  }
 
   // recursion on first element
   if (nanobind::isinstance<nanobind::iterable>(obj)) {
     if (!nanobind::hasattr(obj, "__getitem__")) throw nanobind::type_error("Container has to support subscripting.");
     if (!nanobind::hasattr(obj, "__len__")) throw nanobind::type_error("Container has to support __len__.");
-    if (nanobind::len(obj) != 0) return _get_dtype(obj[0]);
+    if (nanobind::len(obj) != 0) return _get_dtype(obj[0], depth + 1);
     return Array_dtype::EMPTY;
   }
 
