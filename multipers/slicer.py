@@ -700,7 +700,7 @@ def _unsqueeze(self, grid=None, inf_overflow=True):
                     UserWarning,
                 )
                 real_dtype = self.dtype
-                new_filtrations = np.asarray(new_filtrations, dtype=real_type)
+                new_filtrations = np.asarray(new_filtrations, dtype=real_dtype)
         else:
             int_dtypes = [
                 np.dtype(d) for d in available_dtype if np.issubdtype(np.dtype(d), np.integer)
@@ -714,7 +714,7 @@ def _unsqueeze(self, grid=None, inf_overflow=True):
                     UserWarning,
                 )
                 real_dtype = self.dtype
-                new_filtrations = np.asarray(new_filtrations, dtype=real_type)
+                new_filtrations = np.asarray(new_filtrations, dtype=real_dtype)
 
     new_slicer = get_matrix_slicer(
         self.is_vine,

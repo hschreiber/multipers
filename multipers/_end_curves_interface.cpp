@@ -358,7 +358,12 @@ NB_MODULE(_end_curves_interface, m) {
 #else
         nb::object target = multipers::nanobind_helpers::ensure_canonical_contiguous_f64_slicer_object(slicer);
         if (aida_sort) {
-          nb::cast<mpendcurves::CanonicalWrapper&>(target).sort_slicer_co_lexically();
+          // to copy only when necessary (even though sort_slicer_co_lexically also kind of copies for now, i.e. TODO )
+          if (nb::isinstance<multipers::nanobind_helpers::canonical_contiguous_f64_slicer_wrapper>(slicer)) {
+            target = nb::cast<mpendcurves::CanonicalWrapper&>(target).build_colexical_permuted_slicer(false);
+          } else {
+            nb::cast<mpendcurves::CanonicalWrapper&>(target).sort_slicer_co_lexically();
+          }
         }
         return mpendcurves::birth_curve_indices(nb::cast<const mpendcurves::CanonicalWrapper&>(target),
                                                 inf_indices,

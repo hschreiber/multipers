@@ -307,7 +307,9 @@ inline Generator_basis_data deserialize_gen_basis_from_python(
   Generator_basis_data basis;
   {
     nanobind::gil_scoped_release release;
-    deserialize_value_from_char_buffer(basis, state.data());
+    const char* end = deserialize_value_from_char_buffer(basis, state.data());
+    if (static_cast<std::size_t>(end - state.data()) != state.size())
+      throw std::runtime_error("Invalid serialized slicer state.");
   }
   return basis;
 }

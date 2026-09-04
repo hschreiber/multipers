@@ -69,7 +69,9 @@ inline void bind_generator_basis(nanobind::module_& m) {
                nanobind::gil_scoped_release release;
                buffer_size = get_serialization_size_of(self);
                buffer = new char[buffer_size];
-               serialize_value_to_char_buffer(self, buffer);
+               const char* end = serialize_value_to_char_buffer(self, buffer);
+               if (static_cast<std::size_t>(end - buffer) != buffer_size)
+                 throw std::runtime_error("Invalid module serialization.");
              }
              return _wrap_as_numpy_array(buffer, buffer_size);
            })
@@ -254,7 +256,9 @@ inline void bind_slicer_dunders(Class& cls) {
                nanobind::gil_scoped_release release;
                buffer_size = get_serialization_size_of(self);
                buffer = new char[buffer_size];
-               serialize_value_to_char_buffer(self, buffer);
+               const char *end = serialize_value_to_char_buffer(self, buffer);
+               if (static_cast<std::size_t>(end - buffer) != buffer_size)
+                 throw std::runtime_error("Invalid slicer serialization.");
              }
              return nanobind::make_tuple(Slicer::SERIALIZATION_VERSION,
                                          self.get_filtration_grid(),
