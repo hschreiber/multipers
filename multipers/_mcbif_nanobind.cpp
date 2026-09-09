@@ -18,7 +18,7 @@
 #include <utility>
 #include <vector>
 
-#include "Simplex_tree_multi_interface.h"
+// #include "Simplex_tree_multi_interface.h"
 #include "ext_interface/nanobind_registry_helpers.hpp"
 
 namespace nb = nanobind;
@@ -268,7 +268,7 @@ inline std::vector<double> rows_from_nerve_end_indices(const std::vector<size_t>
 
 template <typename Tree, typename Filtration>
 bool insert_kcritical_simplex(Tree& tree, const Simplex& simplex, const Filtration& filtration) {
-  using BaseTree = typename Tree::Base_tree;
+  using BaseTree = typename Tree::Base;
   auto& base_tree = static_cast<BaseTree&>(tree);
   auto result =
       base_tree.insert_simplex_and_subfaces(BaseTree::Filtration_maintenance::LOWER_EXISTING, simplex, filtration);

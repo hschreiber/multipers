@@ -258,7 +258,7 @@ inline bool emit_kcritical_simplex(Tree& tree,
     return false;
   }
   const Filtration filtration(flat_filtration.begin(), flat_filtration.end(), 2);
-  using BaseTree = typename Tree::Base_tree;
+  using BaseTree = typename Tree::Base;
   auto& base_tree = static_cast<BaseTree&>(tree);
   auto result =
       base_tree.insert_simplex_and_subfaces(BaseTree::Filtration_maintenance::LOWER_EXISTING, vertices, filtration);

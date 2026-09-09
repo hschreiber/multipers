@@ -112,10 +112,10 @@ inline void bind_from_slicer_constructors(Class& cls, type_list<SourceDesc1...>,
       // Pack 2: PySimplexTree<interface_type, value_type> wrapper types.
       (t.emplace(
            (PyTypeObject*)
-               nanobind::type<PySimplexTree<typename SourceDesc2::interface_type, typename SourceDesc2::value_type>>()
+               nanobind::type<PySimplexTree<typename SourceDesc2::interface_type>>()
                    .ptr(),
            +[](Target* self, PyObject* obj) {
-             using Wrapper = PySimplexTree<typename SourceDesc2::interface_type, typename SourceDesc2::value_type>;
+             using Wrapper = PySimplexTree<typename SourceDesc2::interface_type>;
              Wrapper& b = *nanobind::inst_ptr<Wrapper>(obj);
              new (self) Target(b);
            }),

@@ -3,7 +3,8 @@
 #include <cstdint>
 #include <vector>
 
-#include "../gudhi/Simplex_tree_multi_interface.h"
+// #include "../gudhi/Simplex_tree_multi_interface.h"
+#include "../gudhi/Multi_simplex_tree_interface.h"
 
 namespace Gudhi {
 namespace multiparameter {
@@ -11,7 +12,7 @@ namespace differentiation {
 
 using signed_measure_indices = std::vector<std::vector<int32_t>>;
 template <typename Filtration>
-using interface_multi = python_interface::interface_multi<Filtration>;
+using interface_multi = Gudhi::multi_persistence::Multi_simplex_tree_interface<Filtration>;
 template <typename Filtration>
 using signed_measure_pts = std::vector<std::vector<typename Filtration::value_type>>;
 template <typename Filtration>

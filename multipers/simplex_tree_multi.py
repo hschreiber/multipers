@@ -611,16 +611,16 @@ def _project_on_line(self, parameter=0, basepoint=None, direction=None):
     return _reconstruct_gudhi_simplextree(serialized)
 
 
-def _linear_projections(self, linear_forms: np.ndarray):
-    linear_forms = np.asarray(linear_forms, dtype=np.float64)
-    if linear_forms.size == 0:
-        return []
-    assert linear_forms.shape[1] == self.num_parameters
-    out = []
-    for linear_form in linear_forms:
-        serialized = _to_std_linear_projection_state_raw[type(self)](self, linear_form)
-        out.append(_reconstruct_gudhi_simplextree(serialized))
-    return out
+# def _linear_projections(self, linear_forms: np.ndarray):
+#     linear_forms = np.asarray(linear_forms, dtype=np.float64)
+#     if linear_forms.size == 0:
+#         return []
+#     assert linear_forms.shape[1] == self.num_parameters
+#     out = []
+#     for linear_form in linear_forms:
+#         serialized = _to_std_linear_projection_state_raw[type(self)](self, linear_form)
+#         out.append(_reconstruct_gudhi_simplextree(serialized))
+#     return out
 
 
 def _eq(self, other):
@@ -739,11 +739,11 @@ _get_simplices_of_dimension_raw = {}
 # _set_keys_to_enumerate_raw = {}
 _get_filtration_values_raw = {}
 _squeeze_inplace_raw = {}
-_squeeze_to_raw = {}
+# _squeeze_to_raw = {}
 _unsqueeze_to_raw = {}
 _fill_lowerstar_raw = {}
 _to_std_state_raw = {}
-_to_std_linear_projection_state_raw = {}
+# _to_std_linear_projection_state_raw = {}
 _eq_raw = {}
 _set_num_parameter_raw = {}
 _pts_to_indices_raw = {}
@@ -769,13 +769,13 @@ def _install_python_api():
         # _set_keys_to_enumerate_raw[cls] = cls.set_keys_to_enumerate
         _get_filtration_values_raw[cls] = cls._get_filtration_values
         _squeeze_inplace_raw[cls] = cls._squeeze_inplace
-        _squeeze_to_raw[cls] = cls._squeeze_to
+        # _squeeze_to_raw[cls] = cls._squeeze_to
         _unsqueeze_to_raw[cls] = cls._unsqueeze_to
         _fill_lowerstar_raw[cls] = cls.fill_lowerstar
         _to_std_state_raw[cls] = cls._get_to_std_state
-        _to_std_linear_projection_state_raw[cls] = (
-            cls._get_to_std_linear_projection_state
-        )
+        # _to_std_linear_projection_state_raw[cls] = (
+        #     cls._get_to_std_linear_projection_state
+        # )
         _eq_raw[cls] = cls.__eq__
         _set_num_parameter_raw[cls] = cls.set_num_parameter
         _pts_to_indices_raw[cls] = cls.pts_to_indices
@@ -815,7 +815,7 @@ def _install_python_api():
         cls.fill_lowerstar = _fill_lowerstar
         cls.fill_distance_matrix = _fill_distance_matrix
         cls.project_on_line = _project_on_line
-        cls.linear_projections = _linear_projections
+        # cls.linear_projections = _linear_projections
         cls.__eq__ = _eq
         cls.euler_characteristic = _euler_characteristic
         cls.set_num_parameter = _set_num_parameter

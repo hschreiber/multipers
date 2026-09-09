@@ -26,7 +26,8 @@
 
 #if !MULTIPERS_DISABLE_FUNCTION_DELAUNAY_INTERFACE
 #include "contiguous_slicer_bridge.hpp"
-#include "Simplex_tree_multi_interface.h"
+// #include "Simplex_tree_multi_interface.h"
+#include "Multi_simplex_tree_interface.h"
 #endif
 
 #if FUNCTION_DELAUNAY_TIMERS
@@ -90,8 +91,7 @@ namespace multipers {
 using function_delaunay_simplextree_filtration =
     tmp_interface::Multi_parameter_filtration<double, false, !false>;
 using function_delaunay_simplextree_interface_output =
-    Gudhi::multiparameter::python_interface::Simplex_tree_multi_interface<function_delaunay_simplextree_filtration,
-                                                                          double>;
+    Gudhi::multi_persistence::Multi_simplex_tree_interface<function_delaunay_simplextree_filtration>;
 
 template <typename index_type>
 contiguous_f64_complex function_delaunay_interface_contiguous_slicer(

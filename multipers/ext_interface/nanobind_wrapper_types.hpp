@@ -49,7 +49,7 @@ inline void reset_simplextree_python_state(State& state) {
   state.filtration_grid = nanobind::none();
 }
 
-template <typename Interface, typename T>
+template <typename Interface>
 struct PySimplexTree : PySimplexTreePythonState {
   Interface tree;
 };

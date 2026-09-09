@@ -32,34 +32,34 @@ namespace Gudhi {
 namespace multiparameter {
 namespace python_interface {
 
-// Moved here as it was said unecessary for the gudhi version. TODO: either remove it from multipers if really not
-// necessary, or find a better place for it.
-/**
- * \brief Applies a linear form (given by a scalar product, via Riesz
- * representation) to the filtration values of the multiparameter simplextree to
- * get a 1 parameter simplextree. \ingroup multiparameter \tparam
- * simplextree_std A non-multi simplextree \tparam simplextree_multi A multi
- * simplextree \param st Simplextree, with the same simplicial complex as
- * st_multi, whose filtration has to be filled. \param st_multi Multiparameter
- * simplextree to convert into a 1 parameter simplex tree. \param linear_form
- * the linear form to apply.
- * */
-template <class simplextree_std, class simplextree_multi>
-void linear_projection(simplextree_std &st, simplextree_multi &st_multi, const std::vector<double> &linear_form) {
-  static_assert(
-      std::is_arithmetic_v<typename simplextree_std::Filtration_value> &&
-          Gudhi::multi_filtration::detail::RangeTraits<typename simplextree_multi::Filtration_value>::is_multi_filtration,
-      "Can only convert multiparameter to non-multiparameter simplextree.");
-  auto sh = st.complex_simplex_range().begin();
-  auto sh_multi = st_multi.complex_simplex_range().begin();
-  auto end = st.complex_simplex_range().end();
-  typename simplextree_multi::Options::Filtration_value multi_filtration;
-  for (; sh != end; ++sh, ++sh_multi) {
-    multi_filtration = st_multi.filtration(*sh_multi);
-    auto projected_filtration = Gudhi::multi_filtration::compute_linear_projection(multi_filtration, linear_form);
-    st.assign_filtration(*sh, projected_filtration);
-  }
-}
+// // Moved here as it was said unecessary for the gudhi version. TODO: either remove it from multipers if really not
+// // necessary, or find a better place for it.
+// /**
+//  * \brief Applies a linear form (given by a scalar product, via Riesz
+//  * representation) to the filtration values of the multiparameter simplextree to
+//  * get a 1 parameter simplextree. \ingroup multiparameter \tparam
+//  * simplextree_std A non-multi simplextree \tparam simplextree_multi A multi
+//  * simplextree \param st Simplextree, with the same simplicial complex as
+//  * st_multi, whose filtration has to be filled. \param st_multi Multiparameter
+//  * simplextree to convert into a 1 parameter simplex tree. \param linear_form
+//  * the linear form to apply.
+//  * */
+// template <class simplextree_std, class simplextree_multi>
+// void linear_projection(simplextree_std &st, simplextree_multi &st_multi, const std::vector<double> &linear_form) {
+//   static_assert(
+//       std::is_arithmetic_v<typename simplextree_std::Filtration_value> &&
+//           Gudhi::multi_filtration::detail::RangeTraits<typename simplextree_multi::Filtration_value>::is_multi_filtration,
+//       "Can only convert multiparameter to non-multiparameter simplextree.");
+//   auto sh = st.complex_simplex_range().begin();
+//   auto sh_multi = st_multi.complex_simplex_range().begin();
+//   auto end = st.complex_simplex_range().end();
+//   typename simplextree_multi::Options::Filtration_value multi_filtration;
+//   for (; sh != end; ++sh, ++sh_multi) {
+//     multi_filtration = st_multi.filtration(*sh_multi);
+//     auto projected_filtration = Gudhi::multi_filtration::compute_linear_projection(multi_filtration, linear_form);
+//     st.assign_filtration(*sh, projected_filtration);
+//   }
+// }
 
 using interface_std = Simplex_tree<Simplex_tree_options_for_python>;  // Interface not necessary
                                                                       // (smaller so should do less
@@ -403,13 +403,13 @@ class Simplex_tree_multi_interface
   //   to_std_linear_projection_object(st, linear_form);
   // }
 
-  std::vector<char> get_to_std_linear_projection_state(const std::vector<double> &linear_form) {
-    interface_std st;
-    linear_projection(st, *this, linear_form);
-    std::vector<char> buffer(st.get_serialization_size());
-    st.serialize(buffer.data(), buffer.size());
-    return buffer;
-  }
+  // std::vector<char> get_to_std_linear_projection_state(const std::vector<double> &linear_form) {
+  //   interface_std st;
+  //   linear_projection(st, *this, linear_form);
+  //   std::vector<char> buffer(st.get_serialization_size());
+  //   st.serialize(buffer.data(), buffer.size());
+  //   return buffer;
+  // }
 
   void squeeze_filtration_inplace(const std::vector<std::vector<double>> &grid, const bool coordinate_values = true) {
     std::size_t num_parameters = Base::num_parameters();
@@ -485,15 +485,15 @@ class Simplex_tree_multi_interface
   //   unsqueeze_filtration_from(grid_st, grid);
   // }
 
-  template <typename OutSimplexTree>
-  void squeeze_filtration_to(OutSimplexTree &out, const std::vector<std::vector<double>> &grid) {
-    out.clear();
-    out.set_num_parameters(Base::num_parameters());
-    out.copy_from(*this, [&](const auto &simplex_filtration) {
-      return compute_coordinates_in_grid<typename OutSimplexTree::Filtration_value::value_type>(simplex_filtration,
-                                                                                                grid);
-    });
-  }
+  // template <typename OutSimplexTree>
+  // void squeeze_filtration_to(OutSimplexTree &out, const std::vector<std::vector<double>> &grid) {
+  //   out.clear();
+  //   out.set_num_parameters(Base::num_parameters());
+  //   out.copy_from(*this, [&](const auto &simplex_filtration) {
+  //     return compute_coordinates_in_grid<typename OutSimplexTree::Filtration_value::value_type>(simplex_filtration,
+  //                                                                                               grid);
+  //   });
+  // }
 
   // void squeeze_filtration(const intptr_t outptr, const std::vector<std::vector<double>> &grid) {
   //   using int_fil_type = decltype(std::declval<Filtration_value>().template as_type<std::int32_t>());

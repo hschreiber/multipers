@@ -373,9 +373,9 @@ struct Compacted_squeezed_filtration_grid {
     return usedCoordinates;
   }
 
-  template <typename Interface, typename T>
+  template <typename Interface>
   static std::vector<std::vector<Index>> collect_used_squeezed_coordinates(
-      multipers::nanobind_helpers::PySimplexTree<Interface, T>& simplexTree) {
+      multipers::nanobind_helpers::PySimplexTree<Interface>& simplexTree) {
     if (simplexTree.tree.num_parameters() <= 0)
       throw std::runtime_error("Number of parameters should not be negative or zero.");
     std::size_t numParam = simplexTree.tree.num_parameters();

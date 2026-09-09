@@ -4,9 +4,10 @@
 #include <vector>
 #include <utility>  // std::pair
 
-#include "../gudhi/Simplex_tree_multi_interface.h"
+// #include "../gudhi/Simplex_tree_multi_interface.h"
+#include "../gudhi/Multi_simplex_tree_interface.h"
 #include "../tensor/tensor.h"
-#include "persistence_slices.h"
+// #include "persistence_slices.h"
 
 
 namespace Gudhi::multiparameter::euler_characteristic{
@@ -14,7 +15,7 @@ namespace Gudhi::multiparameter::euler_characteristic{
 
 template<typename Filtration, typename dtype=int, typename index_type=std::uint16_t>
 void get_euler_surface(
-	python_interface::Simplex_tree_multi_interface<Filtration, typename Filtration::value_type> &st_multi,
+	Gudhi::multi_persistence::Multi_simplex_tree_interface<Filtration> &st_multi,
 	const tensor::static_tensor_view<dtype, index_type>& out, // assumes its a zero tensor
 	bool mobius_inversion,
 	bool zero_pad
@@ -39,7 +40,7 @@ void get_euler_surface(
 
 template<typename Filtration, typename dtype=int, typename indices_type=uint16_t>
 std::pair<std::vector<std::vector<indices_type>>, std::vector<dtype>> get_euler_signed_measure(
-	python_interface::Simplex_tree_multi_interface<Filtration, typename Filtration::value_type>& st_multi, 
+	Gudhi::multi_persistence::Multi_simplex_tree_interface<Filtration>& st_multi, 
 	dtype* data_ptr, 
 	std::vector<indices_type> grid_shape,
 	bool zero_pad,

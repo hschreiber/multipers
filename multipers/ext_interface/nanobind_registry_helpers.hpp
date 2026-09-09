@@ -8,6 +8,7 @@
 #include "nanobind_wrapper_types.hpp"
 #include "nanobind_object_utils.hpp"
 #include "../gudhi/Slicer_interface.h"
+#include "../gudhi/Persistence_slices_interface.h"  // for _slicer_nanobind_registry.inc
 
 namespace nb = nanobind;
 
@@ -27,7 +28,7 @@ using multipers::nanobind_utils::maybe_template_id_of;
 using multipers::nanobind_utils::template_id_of;
 
 template <typename Desc>
-using simplextree_wrapper_t = PySimplexTree<typename Desc::interface_type, typename Desc::value_type>;
+using simplextree_wrapper_t = PySimplexTree<typename Desc::interface_type>;
 
 template <typename Func>
 decltype(auto) dispatch_slicer_by_template_id(int template_id, Func&& func) {

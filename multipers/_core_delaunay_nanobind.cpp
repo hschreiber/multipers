@@ -18,7 +18,8 @@
 #include <CGAL/number_utils.h>
 #include <tbb/parallel_for.h>
 
-#include "Simplex_tree_multi_interface.h"
+// #include "Simplex_tree_multi_interface.h"
+#include "gudhi/Multi_simplex_tree_interface.h"
 #include "ext_interface/nanobind_registry_helpers.hpp"
 #include "nanobind_dense_array_utils.hpp"
 
@@ -33,7 +34,7 @@ namespace mpcd {
 using SafeKernel = CGAL::Epeck_d<CGAL::Dynamic_dimension_tag>;
 using FastKernel = CGAL::Epick_d<CGAL::Dynamic_dimension_tag>;
 using SearchKernel = CGAL::Epick_d<CGAL::Dynamic_dimension_tag>;
-using AlphaTree = Gudhi::multiparameter::python_interface::interface_std;
+using AlphaTree = Gudhi::multi_persistence::Simplex_tree_std;
 
 using multipers::nanobind_dense_utils::cast_vector_from_array;
 using multipers::nanobind_helpers::is_simplextree_object;

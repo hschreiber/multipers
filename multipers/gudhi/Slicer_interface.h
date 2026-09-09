@@ -45,7 +45,8 @@
 #include <gudhi/Multi_persistence/utils.h>
 #include <python_interfaces/numpy_utils.h>
 
-#include "Simplex_tree_multi_interface.h"
+// #include "Simplex_tree_multi_interface.h"
+#include "Multi_simplex_tree_interface.h"
 #include "python_interfaces/construction_utils.h"
 #include "interface_helpers.h"
 #include "interface_helper_structs.h"
@@ -122,11 +123,10 @@ class Slicer_interface {
         isMinPres_(other.is_min_pres()),
         isMinRes_(other.is_min_res()) {}
 
-  // use Simplex_tree_multi_interface<OtherMultiFiltrationValue> instead once the weird wrapper thing is removed
+  // use Multi_simplex_tree_interface<OtherMultiFiltrationValue> instead once the weird wrapper thing is removed
   template <class OtherMultiFiltrationValue>
   Slicer_interface(multipers::nanobind_helpers::PySimplexTree<
-                   Gudhi::multiparameter::python_interface::Simplex_tree_multi_interface<OtherMultiFiltrationValue>,
-                   typename OtherMultiFiltrationValue::value_type> &simplexTree)
+                   Gudhi::multi_persistence::Multi_simplex_tree_interface<OtherMultiFiltrationValue>> &simplexTree)
       : slicer_(), filtrationGrid_(simplexTree.filtration_grid), presDegree_(-1), isMinPres_(false), isMinRes_(false) {
     nanobind::gil_scoped_release release;
     slicer_ = Gudhi::multi_persistence::build_slicer_from_simplex_tree<Slicer_t>(simplexTree.tree);
@@ -281,10 +281,8 @@ class Slicer_interface {
 
   // use Simplex_tree_multi_interface<OtherMultiFiltrationValue> instead once the weird wrapper thing is removed
   template <class OtherMultiFiltrationValue>
-  Slicer_interface &copy(
-      multipers::nanobind_helpers::PySimplexTree<
-          Gudhi::multiparameter::python_interface::Simplex_tree_multi_interface<OtherMultiFiltrationValue>,
-          typename OtherMultiFiltrationValue::value_type> &other) {
+  Slicer_interface &copy(multipers::nanobind_helpers::PySimplexTree<
+                         Gudhi::multi_persistence::Multi_simplex_tree_interface<OtherMultiFiltrationValue>> &other) {
     *this = Slicer_interface(other);
     return *this;
   }
@@ -1157,9 +1155,9 @@ class Slicer_interface {
           if (bar.size() != 2) throw std::invalid_argument("`barcode_indices` has to be of shape (*, 2).");
           auto barDim = bar[0];
           auto barIdx = bar[1];
-          if (barDim < 0 || barDim >= sizeByDim.size())
+          if (barDim < 0 || barDim >= static_cast<std::int64_t>(sizeByDim.size()))
             throw std::invalid_argument("Given dimension in `idx` is not valid or out of bound.");
-          if (barIdx < 0 || barIdx >= cycleIdx[barDim].size())
+          if (barIdx < 0 || barIdx >= static_cast<std::int64_t>(cycleIdx[barDim].size()))
             throw std::invalid_argument("Given bar index in `idx` is not valid or out of bound.");
           ++sizeByDim[barDim];
         }
@@ -1239,7 +1237,8 @@ class Slicer_interface {
           // pre-initialize cache in sequential loop to avoid problems in parallelization
           inter.initialize_cache(range.size(), [&](std::size_t i) -> const auto & {
             // i has to be in range as it goes from 0 to range.size() (exclusive) in `initialize_cache`
-            if (range[i] >= cycleIdx.size()) throw std::out_of_range("Given barcode index is out of range.");
+            if (range[i] >= static_cast<std::int64_t>(cycleIdx.size()))
+              throw std::out_of_range("Given barcode index is out of range.");
             return cycleIdx[range[i]];
           });
         }

@@ -33,6 +33,7 @@ multipers_add_core_object_library(
   "${CMAKE_SOURCE_DIR}/tools/core/simplextree_core.cc"
   multipers_core_filtrations_obj
 )
+target_include_directories(multipers_core_simplextree_obj PRIVATE ${MULTIPERS_NANOBIND_INCLUDE_DIR} ${Python_INCLUDE_DIRS})
 multipers_add_core_object_library(
   multipers_core_slicer_obj1
   "${CMAKE_SOURCE_DIR}/tools/core/slicer_core1.cc"
