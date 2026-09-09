@@ -223,6 +223,9 @@ void fill_core_delaunay_simplextree(Wrapper& wrapper,
       filtration_values[2 * k_index + 1] = second_parameter_values[k_index];
     }
     wrapper.tree.get_filtration_value(*target_it) = Filtration(filtration_values.begin(), filtration_values.end(), 2);
+    // TODO: if std::max(alpha, beta_value * max_knn_distance) is a monotonously increasing/decreasing function
+    // we can avoid the simplification by jumping over repeating values (at take the right second parameter)
+    wrapper.tree.get_filtration_value(*target_it).simplify();
   }
   wrapper.tree.clear_filtration();
 }

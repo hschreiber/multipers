@@ -230,7 +230,7 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
         for (const auto& sh : Base::complex_simplex_range()) {
           const auto& f = Base::get_filtration_value(sh);
           for (std::size_t g = 0; g < f.num_generators(); ++g) {
-            for (std::size_t p = 0; p < numParam; ++p) view(i, p) = f(g, p);
+            for (std::size_t p = 0; p < numParam; ++p) view(p, i) = f(g, p);
             ++i;
           }
         }
@@ -261,7 +261,7 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
             Gudhi::Simple_mdspan view(values[degreeIndex[dim]].data(), numParam, numSimplices[dim]);
             auto& i = currState[degreeIndex[dim]];
             for (std::size_t g = 0; g < f.num_generators(); ++g) {
-              for (std::size_t p = 0; p < numParam; ++p) view(i, p) = f(g, p);
+              for (std::size_t p = 0; p < numParam; ++p) view(p, i) = f(g, p);
               ++i;
             }
           }
@@ -359,7 +359,7 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
 
   template <typename OneDimArray>
   void coarsen_on_grid(const std::vector<OneDimArray>& grid, bool coordinate = true) {
-    if (static_cast<int>(grid.size()) <= Base::num_parameters()) {
+    if (static_cast<int>(grid.size()) < Base::num_parameters()) {
       throw std::invalid_argument("Grid and simplex tree do not agree on number of parameters.");
     }
     for (auto sh : Base::complex_simplex_range()) {
@@ -380,9 +380,12 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
   template <typename OneDimArray>
   Multi_simplex_tree_interface build_unsqueezed_from(const std::vector<OneDimArray>& grid) const {
     Multi_simplex_tree_interface out;
-    out.copy_from(*this, [&](const Filtration_value& fil) -> Filtration_value {
-      return evaluate_coordinates_in_grid<value_type>(fil, grid);
-    });
+    {
+      nanobind::gil_scoped_release release;
+      out.copy_from(*this, [&](const Filtration_value& fil) -> Filtration_value {
+        return evaluate_coordinates_in_grid<value_type>(fil, grid);
+      });
+    }
     return out;
   }
 

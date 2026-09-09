@@ -332,16 +332,16 @@ void build_from_slicer_desc(Wrapper& self, const typename Desc::interface& sourc
   reset_simplextree_python_state(self);
 }
 
-template <typename Wrapper, typename Interface>
-bool try_build_from_slicer(Wrapper& self, nb::handle source, int max_dim) {
-  if (!is_slicer_object(source)) {
-    return false;
-  }
-  visit_const_slicer_wrapper(source, [&]<typename D>(const typename D::interface& wrapper) {
-    build_from_slicer_desc<D, Wrapper, Interface>(self, wrapper, max_dim);
-  });
-  return true;
-}
+// template <typename Wrapper, typename Interface>
+// bool try_build_from_slicer(Wrapper& self, nb::handle source, int max_dim) {
+//   if (!is_slicer_object(source)) {
+//     return false;
+//   }
+//   visit_const_slicer_wrapper(source, [&]<typename D>(const typename D::interface& wrapper) {
+//     build_from_slicer_desc<D, Wrapper, Interface>(self, wrapper, max_dim);
+//   });
+//   return true;
+// }
 
 template <typename Filtration, typename T, bool IsKCritical>
 Filtration filtration_from_handle(nb::handle filtration_handle, int num_parameters) {
@@ -998,18 +998,18 @@ void bind_simplextree_class(nb::module_& m, nb::list& available_simplextrees) {
                 return self;
               },
               nb::rv_policy::reference_internal)
-          .def(
-              "_from_slicer",
-              [](Wrapper& self, nb::handle slicer, int max_dim) -> Wrapper& {
-                if (!try_build_from_slicer<Wrapper, Interface>(self, slicer, max_dim)) {
-                  throw std::runtime_error("Unsupported slicer input type. Got " +
-                                           std::string(nb::inst_name(slicer).c_str()) + ".");
-                }
-                return self;
-              },
-              "slicer"_a,
-              "max_dim"_a = -1,
-              nb::rv_policy::reference_internal)
+          // .def(
+          //     "_from_slicer",
+          //     [](Wrapper& self, nb::handle slicer, int max_dim) -> Wrapper& {
+          //       if (!try_build_from_slicer<Wrapper, Interface>(self, slicer, max_dim)) {
+          //         throw std::runtime_error("Unsupported slicer input type. Got " +
+          //                                  std::string(nb::inst_name(slicer).c_str()) + ".");
+          //       }
+          //       return self;
+          //     },
+          //     "slicer"_a,
+          //     "max_dim"_a = -1,
+          //     nb::rv_policy::reference_internal)
           .def(
               "_from_gudhi_state",
               [](Wrapper& self, nb::handle state, int num_parameters, nb::handle default_values) -> Wrapper& {
@@ -1175,12 +1175,7 @@ void bind_simplextree_class(nb::module_& m, nb::list& available_simplextrees) {
       .def("_get_filtration_values",
            [](Wrapper& self, nb::handle degrees_handle) {
              auto degrees = vector_from_handle<int>(degrees_handle);
-             decltype(self.tree.get_filtration_values(degrees)) out;
-             {
-               nb::gil_scoped_release release;
-               out = self.tree.get_filtration_values(degrees);
-             }
-             return nb::cast(out);
+             return self.tree.get_filtration_values(degrees);
            })
       .def(
           "_normalize_filtrations_raw",
@@ -1238,10 +1233,7 @@ void bind_simplextree_class(nb::module_& m, nb::list& available_simplextrees) {
       .def("_unsqueeze_to",
            [](Wrapper& self, Wrapper& out, nb::handle grid_handle) {
              auto grid = matrix_from_handle<double>(grid_handle);
-             {
-               nb::gil_scoped_release release;
-               out.tree = self.tree.build_unsqueezed_from(grid);
-             }
+             out.tree = self.tree.build_unsqueezed_from(grid);
            })
       .def("num_vertices", [](Wrapper& self) -> int { return self.tree.num_vertices(); })
       .def("num_simplices", [](Wrapper& self) -> int { return self.tree.num_simplices(); })
