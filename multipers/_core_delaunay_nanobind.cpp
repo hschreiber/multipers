@@ -192,6 +192,7 @@ void fill_core_delaunay_simplextree(Wrapper& wrapper,
   wrapper.tree.set_num_parameters(2);
 
   const Value top_degree = static_cast<Value>(ks.back());
+  
   for (size_t k_index = 0; k_index < num_ks; ++k_index) {
     second_parameter_values[k_index] = positive_degree
                                          ? top_degree - static_cast<Value>(ks[k_index])
@@ -214,18 +215,44 @@ void fill_core_delaunay_simplextree(Wrapper& wrapper,
     for (int vertex : simplex) {
       knn_rows.push_back(knn_distances.data() + static_cast<size_t>(vertex) * num_ks);
     }
+
+    size_t written = 0;
+
     for (size_t k_index = 0; k_index < num_ks; ++k_index) {
       Value max_knn_distance = static_cast<Value>(0);
       for (const double* row : knn_rows) {
         max_knn_distance = std::max(max_knn_distance, static_cast<Value>(row[k_index]));
       }
-      filtration_values[2 * k_index] = std::max(alpha, beta_value * max_knn_distance);
-      filtration_values[2 * k_index + 1] = second_parameter_values[k_index];
+
+      // monotonous
+      const Value radius = std::max(alpha, beta_value * max_knn_distance);
+
+      // Equal radius: the larger k has the smaller second coordinate,
+      // so overwrite the previous generator of this plateau.
+      if (written != 0 && filtration_values[2 * (written - 1)] == radius) {
+        --written;
+      }
+
+      filtration_values[2 * written] = radius;
+      filtration_values[2 * written + 1] = second_parameter_values[k_index];
+      ++written;
     }
-    wrapper.tree.get_filtration_value(*target_it) = Filtration(filtration_values.begin(), filtration_values.end(), 2);
-    // TODO: if std::max(alpha, beta_value * max_knn_distance) is a monotonously increasing/decreasing function
-    // we can avoid the simplification by jumping over repeating values (at take the right second parameter)
-    wrapper.tree.get_filtration_value(*target_it).simplify();
+
+    wrapper.tree.get_filtration_value(*target_it) =
+        Filtration(filtration_values.begin(), filtration_values.begin() + 2 * written, 2);
+
+    // for (size_t k_index = 0; k_index < num_ks; ++k_index) {
+    //   Value max_knn_distance = static_cast<Value>(0);
+    //   for (const double* row : knn_rows) {
+    //     max_knn_distance = std::max(max_knn_distance, static_cast<Value>(row[k_index]));
+    //   }
+    //   filtration_values[2 * k_index] = std::max(alpha, beta_value * max_knn_distance);
+    //   filtration_values[2 * k_index + 1] = second_parameter_values[k_index];
+    // }
+    // wrapper.tree.get_filtration_value(*target_it) = Filtration(filtration_values.begin(), filtration_values.end(), 2);
+    // // TODO: if std::max(alpha, beta_value * max_knn_distance) is a monotonously increasing/decreasing function
+    // // we can avoid the simplification by jumping over repeating values (at take the right second parameter)
+    // wrapper.tree.get_filtration_value(*target_it).simplify();
   }
   wrapper.tree.clear_filtration();
 }

@@ -373,8 +373,14 @@ bool insert_kcritical_simplex(Tree& tree, const std::vector<int>& simplex, const
   auto& base_tree = static_cast<BaseTree&>(tree);
 
   if (filtration != nullptr) {
+    // TODO: insert_simplex_and_subfaces potentially calls unify_lifetimes which calls add_generator which assumes
+    // filtration is simplified. As simplify is not exactly cheap, we could also only call it when we not know if it
+    // is simplified higher in the call chain. That is, add the simplify for external inserts and not use it for
+    // internal inserts when we know for sure that it is already simplified.
+    auto newFil = *filtration;
+    newFil.simplify();
     auto result =
-        base_tree.insert_simplex_and_subfaces(BaseTree::Filtration_maintenance::LOWER_EXISTING, simplex, *filtration);
+        base_tree.insert_simplex_and_subfaces(BaseTree::Filtration_maintenance::LOWER_EXISTING, simplex, newFil);
     if (result.first != tree.null_simplex()) {
       tree.clear_filtration();
     }
