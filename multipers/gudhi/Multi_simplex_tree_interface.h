@@ -63,6 +63,8 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
   using Tensor1D = nanobind::ndarray<const U, nanobind::ndim<1>, nanobind::any_contig>;
   template <typename U>
   using Tensor2D = nanobind::ndarray<const U, nanobind::ndim<2>>;
+  template <typename U>
+  using Tensor3D = nanobind::ndarray<const U, nanobind::ndim<3>>;
 
   Multi_simplex_tree_interface() = default;
   Multi_simplex_tree_interface(const Base& st) : Base(st) {};
@@ -92,16 +94,102 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
 
   bool find_simplex(const Simplex& simplex) const { return (Base::find(simplex) != Base::null_simplex()); }
 
+  // TODO: move to private?
   bool insert(const Simplex& simplex, const Filtration_value& filtration) {
     auto result = Base::insert_simplex_and_subfaces(Base::Filtration_maintenance::INCREASE_NEW, simplex, filtration);
     if (result.first != Base::null_simplex()) Base::clear_filtration();
     return result.second;
   }
 
+  // TODO: move to private?
   bool insert_force(const Simplex& simplex, const Filtration_value& filtration) {
     auto result = Base::insert_simplex_and_subfaces(Base::Filtration_maintenance::IGNORE_VALIDITY, simplex, filtration);
     Base::clear_filtration();
     return result.second;
+  }
+
+  bool insert_single_simplex(Tensor1D<int> vertices, nanobind::object filtrationValue) {
+    std::pair<Simplex_handle, bool> result;
+
+    if (filtrationValue.is_none()) {
+      {
+        nanobind::gil_scoped_release release;
+        result = Base::insert_simplex_and_subfaces(Base::Filtration_maintenance::INCREASE_NEW,
+                                                   Numpy_span(vertices),
+                                                   Filtration_value::minus_inf(Base::num_parameters()));
+      }
+    } else {
+      Filtration_value fil = _cast_to_filtration_value(filtrationValue, Base::num_parameters());
+      {
+        nanobind::gil_scoped_release release;
+        // I still don't understand why 1-critical and k-critical simplices are not inserted with the same strategy.
+        // That just feels inconsistent. If they are not used in the same situation, you could allow to pass
+        // the strategy instead to make sense, no? In particular when the user could have completely different
+        // use cases than the examples here.
+        if constexpr (Filtration_value::ensures_1_criticality()) {
+          result =
+              Base::insert_simplex_and_subfaces(Base::Filtration_maintenance::INCREASE_NEW, Numpy_span(vertices), fil);
+        } else {
+          // TODO: insert_simplex_and_subfaces calls unify_lifetimes which calls add_generator which assumes filtration
+          // is simplified. As simplify is not exactly cheap, we could also only call it when we not know if it is
+          // simplified higher in the call chain. That is, add the simplify for external inserts and not use it for
+          // internal inserts when we know for sure that it is already simplified.
+          fil.simplify();
+          result =
+              Base::insert_simplex_and_subfaces(Base::Filtration_maintenance::LOWER_EXISTING, Numpy_span(vertices), fil);
+        }
+      }
+    }
+
+    if (result.first != Base::null_simplex()) Base::clear_filtration();
+    return result.second;
+  }
+
+  Multi_simplex_tree_interface& insert_batch(Tensor1D<int> vertices,
+                                             Tensor2D<int> vertex_array,
+                                             nanobind::object filtrationValues) {
+    auto v_view = vertex_array.view();
+    const std::size_t dim = v_view.shape(0) - 1;
+    const std::size_t numSimplices = v_view.shape(1);
+
+    std::vector<Filtration_value> fils;
+    if (!filtrationValues.is_none()) {
+      fils = _cast_to_filtration_value_array(filtrationValues, Base::num_parameters());
+    }
+    Base::clear_filtration();
+
+    if (fils.empty()) {
+      {
+        nanobind::gil_scoped_release release;
+        Base::insert_batch_vertices(Numpy_span<int>(vertices), Filtration_value::minus_inf(Base::num_parameters()));
+        if (dim > 0) {
+          for (std::size_t i = 0; i < numSimplices; ++i) {
+            Base::insert_simplex_and_subfaces(Base::Filtration_maintenance::INCREASE_NEW,
+                                              make_element_range(&v_view(0, i), v_view, false),
+                                              Filtration_value::minus_inf(Base::num_parameters()));
+          }
+        }
+      }
+      return *this;
+    }
+
+    if (fils.size() < numSimplices)
+      throw std::invalid_argument("Filtration value array does not have a value for every simplex.");
+
+    {
+      nanobind::gil_scoped_release release;
+      Base::insert_batch_vertices(Numpy_span<int>(vertices), Filtration_value::inf(Base::num_parameters()));
+      for (std::size_t i = 0; i < numSimplices; ++i) {
+        // TODO: insert_simplex_and_subfaces calls unify_lifetimes which calls add_generator which assumes filtration
+        // is simplified. As simplify is not exactly cheap, we could also only call it when we not know if it is
+        // simplified higher in the call chain. That is, add the simplify for external inserts and not use it for
+        // internal inserts when we know for sure that it is already simplified.
+        fils[i].simplify();
+        Base::insert_simplex_and_subfaces(
+            Base::Filtration_maintenance::LOWER_EXISTING, make_element_range(&v_view(0, i), v_view, false), fils[i]);
+      }
+    }
+    return *this;
   }
 
   void remove_maximal_simplex(const Simplex& simplex) {
@@ -430,6 +518,155 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
     Iterator curr_;
     Multi_simplex_tree_interface const* tree_;
   };
+
+  template <typename F>
+  static void _for_each_python_item(nanobind::handle obj, F&& fun) {
+    PyObject* raw_iter = PyObject_GetIter(obj.ptr());
+    if (!raw_iter) {
+      PyErr_Clear();
+      throw std::runtime_error("Expected an iterable, got object of type '" +
+                               std::string(nanobind::type_name(obj.type()).c_str()) + "'.");
+    }
+    nanobind::object iter = nanobind::steal(raw_iter);
+
+    while (true) {
+      PyObject* item = PyIter_Next(iter.ptr());
+      if (!item) {
+        if (PyErr_Occurred()) throw nanobind::python_error();
+        break;
+      }
+      fun(nanobind::steal(item));
+    }
+  }
+
+  template <typename U>
+  static Filtration_value _cast_to_filtration_value(Tensor1D<U> values) {
+    Numpy_span<U> view(values);
+    return Filtration_value(view.begin(), view.end());
+  }
+
+  template <typename U>
+  static Filtration_value _cast_to_filtration_value(Tensor2D<U> values) {
+    if constexpr (Filtration_value::ensures_1_criticality()) {
+      throw std::invalid_argument("A 1-critical filtration value has to be one dimensional.");
+    } else {
+      // could be not C-ordered, so we cannot just pass the data array to Filtration_value
+      auto view = values.view();
+      Filtration_value out(view.shape(1));
+      out.set_num_generators(view.shape(0));
+      for (std::size_t g = 0; g < view.shape(0); ++g) {
+        for (std::size_t p = 0; p < view.shape(1); ++p) out(g, p) = view(g, p);
+      }
+      return out;
+    }
+  }
+
+  static Filtration_value _cast_to_filtration_value(nanobind::object values, int defaultNumParam) {
+    auto cast_as_vector = [&]() -> Filtration_value {
+      std::vector<value_type> gens;
+      auto rec_flatten = [](const auto& self, nanobind::object obj, std::vector<value_type>& out, int maxDepth) -> int {
+        if (maxDepth < 0)
+          throw std::invalid_argument("Filtration value has to be 1D when 1-critical and max 2D when k-critical.");
+        value_type scalar;
+        if (nanobind::try_cast<value_type>(obj, scalar)) {
+          out.push_back(scalar);
+          return -1;
+        }
+        int count = 0;
+        bool sawScalar = false, sawIterable = false;
+        _for_each_python_item(obj, [&](nanobind::object item) {
+          int c = self(self, item, out, maxDepth - 1);
+          if (c < 0) {
+            ++count;
+            sawScalar = true;
+          } else {
+            if (sawIterable && count != c) {
+              throw std::invalid_argument("Ragged array: inconsistent row lengths for filtration value (" +
+                                          std::to_string(count) + " vs " + std::to_string(c) + ").");
+            }
+            sawIterable = true;
+            count = c;
+          }
+        });
+        if (sawScalar && sawIterable)
+          throw std::runtime_error(
+              "Ragged array: mixed scalars and nested iterables at the same level for filtration value.");
+        return count;
+      };
+
+      int depth = 2;
+      if constexpr (Filtration_value::ensures_1_criticality()) {
+        depth = 1;
+      }
+      int numParam = rec_flatten(rec_flatten, values, gens, depth);
+      if (numParam < 0) throw std::invalid_argument("Filtration value has to be at least 1-dimensional.");
+      return Filtration_value(gens.begin(), gens.end(), numParam);
+    };
+    auto cast_first_as_tensor_then_as_vector = [&]<typename U>() -> Filtration_value {
+      if (Tensor1D<U> val; nanobind::try_cast<Tensor1D<U>>(values, val, false)) return _cast_to_filtration_value(val);
+      if (Tensor2D<U> val; nanobind::try_cast<Tensor2D<U>>(values, val, false)) return _cast_to_filtration_value(val);
+      return cast_as_vector();
+    };
+    return detail::_dispatch_dtype(
+        values,
+        cast_first_as_tensor_then_as_vector,
+        [defaultNumParam]() -> Filtration_value { return Filtration_value(defaultNumParam); },
+        cast_as_vector);
+  }
+
+  template <typename U>
+  static std::vector<Filtration_value> _cast_to_filtration_value_array(Tensor2D<U> values) {
+    auto view = values.view();
+    std::vector<Filtration_value> out(view.shape(0), Filtration_value(view.shape(1)));
+    for (std::size_t i = 0; i < view.shape(0); ++i) {
+      for (std::size_t p = 0; p < view.shape(1); ++p) out[i](0, p) = view(i, p);
+    }
+    return out;
+  }
+
+  template <typename U>
+  static std::vector<Filtration_value> _cast_to_filtration_value_array(Tensor3D<U> values) {
+    if constexpr (Filtration_value::ensures_1_criticality()) {
+      throw std::invalid_argument("An array of 1-critical filtration values have to be two dimensional.");
+    } else {
+      auto view = values.view();
+      std::vector<Filtration_value> out(view.shape(0), Filtration_value(view.shape(2)));
+      for (std::size_t i = 0; i < view.shape(0); ++i) {
+        out[i].set_num_generators(view.shape(1));
+        for (std::size_t g = 0; g < view.shape(1); ++g) {
+          for (std::size_t p = 0; p < view.shape(2); ++p) out[i](g, p) = view(i, g, p);
+        }
+      }
+      return out;
+    }
+  }
+
+  static std::vector<Filtration_value> _cast_to_filtration_value_array(nanobind::object values, int defaultNumParam) {
+    auto cast_as_vector = [&]() -> std::vector<Filtration_value> {
+      std::vector<Filtration_value> out;
+      int numParam = -1;
+      _for_each_python_item(values, [&](nanobind::object item) {
+        Filtration_value f = _cast_to_filtration_value(item, defaultNumParam);
+        if (numParam != -1 && static_cast<int>(f.num_parameters()) != numParam)
+          throw std::invalid_argument("Inconsistent number of parameters in filtration value array.");
+        numParam = f.num_parameters();
+        out.push_back(std::move(f));
+      });
+      return out;
+    };
+    auto cast_first_as_tensor_then_as_vector = [&]<typename U>() -> std::vector<Filtration_value> {
+      if (Tensor2D<U> val; nanobind::try_cast<Tensor2D<U>>(values, val, false))
+        return _cast_to_filtration_value_array(val);
+      if (Tensor3D<U> val; nanobind::try_cast<Tensor3D<U>>(values, val, false))
+        return _cast_to_filtration_value_array(val);
+      return cast_as_vector();
+    };
+    return detail::_dispatch_dtype(
+        values,
+        cast_first_as_tensor_then_as_vector,
+        []() -> std::vector<Filtration_value> { return {}; },
+        cast_as_vector);
+  }
 
   nanobind::tuple _get_simplex_and_filtration(Simplex_handle sh) const {
     Simplex simplex;

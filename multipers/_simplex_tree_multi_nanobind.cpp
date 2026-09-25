@@ -274,10 +274,10 @@ void copy_simplicial_slicer_to_simplextree(TargetInterface& out, const SourceSli
   const auto& filtrations = slicer.get_filtration_values();
 
   std::vector<std::vector<TargetVertex>> simplex_vertices(dims.size());
-  std::vector<TargetSimplex> simplices;
-  std::vector<TargetFiltration> converted_filtrations;
-  simplices.reserve(dims.size());
-  converted_filtrations.reserve(dims.size());
+  // std::vector<TargetSimplex> simplices;
+  // std::vector<TargetFiltration> converted_filtrations;
+  // simplices.reserve(dims.size());
+  // converted_filtrations.reserve(dims.size());
 
   int next_vertex = 0;
   int previous_dim = -1;
@@ -309,18 +309,17 @@ void copy_simplicial_slicer_to_simplextree(TargetInterface& out, const SourceSli
       }
     }
 
-    simplices.emplace_back(vertices.begin(), vertices.end());
+    // simplices.emplace_back(vertices.begin(), vertices.end());
     if constexpr (std::is_same_v<TargetFiltration, typename SourceSlicer::Filtration_value>) {
-      converted_filtrations.push_back(filtrations[i]);
+      out.insert_force(vertices, filtrations[i]);
     } else {
-      converted_filtrations.push_back(filtrations[i].template as_type<TargetFiltration>());
+      out.insert_force(vertices, filtrations[i].template as_type<TargetFiltration>());
     }
-    out.insert(simplices.back(), converted_filtrations.back());
   }
 
-  for (size_t i = 0; i < simplices.size(); ++i) {
-    out.assign_simplex_filtration(simplices[i], converted_filtrations[i]);
-  }
+  // for (size_t i = 0; i < simplices.size(); ++i) {
+  //   out.assign_simplex_filtration(simplices[i], converted_filtrations[i]);
+  // }
 }
 
 template <typename Desc, typename Wrapper, typename Interface>
@@ -441,8 +440,8 @@ Wrapper& insert_batch_simplices(Wrapper& self,
   return self;
 }
 
-template <typename Wrapper, typename Filtration, typename T, bool IsKCritical>
-bool insert_single_simplex(Wrapper& self, const std::vector<int>& simplex, nb::handle filtration_handle, bool force);
+// template <typename Wrapper, typename Filtration, typename T, bool IsKCritical>
+// bool insert_single_simplex(Wrapper& self, const std::vector<int>& simplex, nb::handle filtration_handle, bool force);
 
 template <typename Tree>
 void check_simplex_exists(Tree& tree, const std::vector<int>& simplex) {
@@ -451,92 +450,92 @@ void check_simplex_exists(Tree& tree, const std::vector<int>& simplex) {
   }
 }
 
-template <typename Class, typename Wrapper, typename Filtration, typename Value, bool IsKCritical, typename Index>
-void bind_insert_batch_overloads(Class& cls) {
-  if constexpr (!IsKCritical) {
-    cls.def(
-        "_insert_batch",
-        [](Wrapper& self,
-           nb::ndarray<nb::numpy, const Index, nb::ndim<2>> vertex_array,
-           nb::ndarray<nb::numpy, const Value, nb::ndim<2>> filtrations) -> Wrapper& {
-          auto simplices = simplices_from_vertex_array(vertex_array);
-          const bool empty_filtration = filtrations.shape(0) == 0 || filtrations.shape(1) == 0;
-          if (!empty_filtration && filtrations.shape(0) != simplices.num_simplices) {
-            throw std::runtime_error(
-                "Invalid filtration batch shape for 1-critical filtration. Got (" +
-                std::to_string(filtrations.shape(0)) + ", " + std::to_string(filtrations.shape(1)) +
-                "), expected (num_simplices=" + std::to_string(simplices.num_simplices) + ", num_parameters=*).");
-          }
-          auto dense_filtrations = empty_filtration
-                                       ? std::vector<Filtration>{}
-                                       : one_critical_filtrations_from_array<Filtration, Value>(filtrations);
-          return insert_batch_simplices<Wrapper, Filtration, Value, false>(
-              self, simplices, dense_filtrations, empty_filtration);
-        },
-        "vertex_array"_a,
-        "filtrations"_a,
-        nb::rv_policy::reference_internal);
-  } else {
-    cls.def(
-        "_insert_batch",
-        [](Wrapper& self,
-           nb::ndarray<nb::numpy, const Index, nb::ndim<2>> vertex_array,
-           nb::ndarray<nb::numpy, const Value, nb::ndim<3>> filtrations) -> Wrapper& {
-          auto simplices = simplices_from_vertex_array(vertex_array);
-          const bool empty_filtration =
-              filtrations.shape(0) == 0 || filtrations.shape(1) == 0 || filtrations.shape(2) == 0;
-          if (!empty_filtration && filtrations.shape(0) != simplices.num_simplices) {
-            throw std::runtime_error("Invalid filtration batch shape for k-critical filtration. Got (" +
-                                     std::to_string(filtrations.shape(0)) + ", " +
-                                     std::to_string(filtrations.shape(1)) + ", " +
-                                     std::to_string(filtrations.shape(2)) +
-                                     "), expected (num_simplices=" + std::to_string(simplices.num_simplices) +
-                                     ", num_kgenerators=*, num_parameters=*).");
-          }
-          auto packed_filtrations = empty_filtration ? std::vector<Filtration>{}
-                                                     : kcritical_filtrations_from_array<Filtration, Value>(
-                                                           filtrations, self.tree.num_parameters());
-          return insert_batch_simplices<Wrapper, Filtration, Value, true>(
-              self, simplices, packed_filtrations, empty_filtration);
-        },
-        "vertex_array"_a,
-        "filtrations"_a,
-        nb::rv_policy::reference_internal);
-  }
-}
+// template <typename Class, typename Wrapper, typename Filtration, typename Value, bool IsKCritical, typename Index>
+// void bind_insert_batch_overloads(Class& cls) {
+//   if constexpr (!IsKCritical) {
+//     cls.def(
+//         "_insert_batch",
+//         [](Wrapper& self,
+//            nb::ndarray<nb::numpy, const Index, nb::ndim<2>> vertex_array,
+//            nb::ndarray<nb::numpy, const Value, nb::ndim<2>> filtrations) -> Wrapper& {
+//           auto simplices = simplices_from_vertex_array(vertex_array);
+//           const bool empty_filtration = filtrations.shape(0) == 0 || filtrations.shape(1) == 0;
+//           if (!empty_filtration && filtrations.shape(0) != simplices.num_simplices) {
+//             throw std::runtime_error(
+//                 "Invalid filtration batch shape for 1-critical filtration. Got (" +
+//                 std::to_string(filtrations.shape(0)) + ", " + std::to_string(filtrations.shape(1)) +
+//                 "), expected (num_simplices=" + std::to_string(simplices.num_simplices) + ", num_parameters=*).");
+//           }
+//           auto dense_filtrations = empty_filtration
+//                                        ? std::vector<Filtration>{}
+//                                        : one_critical_filtrations_from_array<Filtration, Value>(filtrations);
+//           return insert_batch_simplices<Wrapper, Filtration, Value, false>(
+//               self, simplices, dense_filtrations, empty_filtration);
+//         },
+//         "vertex_array"_a,
+//         "filtrations"_a,
+//         nb::rv_policy::reference_internal);
+//   } else {
+//     cls.def(
+//         "_insert_batch",
+//         [](Wrapper& self,
+//            nb::ndarray<nb::numpy, const Index, nb::ndim<2>> vertex_array,
+//            nb::ndarray<nb::numpy, const Value, nb::ndim<3>> filtrations) -> Wrapper& {
+//           auto simplices = simplices_from_vertex_array(vertex_array);
+//           const bool empty_filtration =
+//               filtrations.shape(0) == 0 || filtrations.shape(1) == 0 || filtrations.shape(2) == 0;
+//           if (!empty_filtration && filtrations.shape(0) != simplices.num_simplices) {
+//             throw std::runtime_error("Invalid filtration batch shape for k-critical filtration. Got (" +
+//                                      std::to_string(filtrations.shape(0)) + ", " +
+//                                      std::to_string(filtrations.shape(1)) + ", " +
+//                                      std::to_string(filtrations.shape(2)) +
+//                                      "), expected (num_simplices=" + std::to_string(simplices.num_simplices) +
+//                                      ", num_kgenerators=*, num_parameters=*).");
+//           }
+//           auto packed_filtrations = empty_filtration ? std::vector<Filtration>{}
+//                                                      : kcritical_filtrations_from_array<Filtration, Value>(
+//                                                            filtrations, self.tree.num_parameters());
+//           return insert_batch_simplices<Wrapper, Filtration, Value, true>(
+//               self, simplices, packed_filtrations, empty_filtration);
+//         },
+//         "vertex_array"_a,
+//         "filtrations"_a,
+//         nb::rv_policy::reference_internal);
+//   }
+// }
 
 template <typename Class, typename Wrapper, typename Filtration, typename Value, bool IsKCritical, typename Index>
 void bind_simplex_array_overloads(Class& cls) {
   if constexpr (!IsKCritical) {
-    cls.def(
-        "_insert_simplex",
-        [](Wrapper& self,
-           nb::ndarray<nb::numpy, const Index, nb::ndim<1>, nb::c_contig> simplex,
-           nb::ndarray<nb::numpy, const Value, nb::ndim<1>, nb::c_contig> filtration,
-           bool force) {
-          return insert_single_simplex<Wrapper, Filtration, Value, false>(
-              self,
-              simplex_from_array(simplex),
-              nb::cast(one_critical_filtration_from_array<Filtration, Value>(filtration)),
-              force);
-        },
-        "simplex"_a,
-        "filtration"_a,
-        "force"_a = false);
+    // cls.def(
+    //     "_insert_simplex",
+    //     [](Wrapper& self,
+    //        nb::ndarray<nb::numpy, const Index, nb::ndim<1>, nb::c_contig> simplex,
+    //        nb::ndarray<nb::numpy, const Value, nb::ndim<1>, nb::c_contig> filtration,
+    //        bool force) {
+    //       return insert_single_simplex<Wrapper, Filtration, Value, false>(
+    //           self,
+    //           simplex_from_array(simplex),
+    //           nb::cast(one_critical_filtration_from_array<Filtration, Value>(filtration)),
+    //           force);
+    //     },
+    //     "simplex"_a,
+    //     "filtration"_a,
+    //     "force"_a = false);
 
-    cls.def(
-        "_insert",
-        [](Wrapper& self,
-           nb::ndarray<nb::numpy, const Index, nb::ndim<1>, nb::c_contig> simplex,
-           nb::ndarray<nb::numpy, const Value, nb::ndim<1>, nb::c_contig> filtration) -> bool {
-          return insert_single_simplex<Wrapper, Filtration, Value, false>(
-              self,
-              simplex_from_array(simplex),
-              nb::cast(one_critical_filtration_from_array<Filtration, Value>(filtration)),
-              false);
-        },
-        "simplex"_a,
-        "filtration"_a);
+    // cls.def(
+    //     "_insert",
+    //     [](Wrapper& self,
+    //        nb::ndarray<nb::numpy, const Index, nb::ndim<1>, nb::c_contig> simplex,
+    //        nb::ndarray<nb::numpy, const Value, nb::ndim<1>, nb::c_contig> filtration) -> bool {
+    //       return insert_single_simplex<Wrapper, Filtration, Value, false>(
+    //           self,
+    //           simplex_from_array(simplex),
+    //           nb::cast(one_critical_filtration_from_array<Filtration, Value>(filtration)),
+    //           false);
+    //     },
+    //     "simplex"_a,
+    //     "filtration"_a);
 
     cls.def(
         "_assign_filtration",
@@ -554,65 +553,65 @@ void bind_simplex_array_overloads(Class& cls) {
         },
         nb::rv_policy::reference_internal);
   } else {
-    cls.def(
-        "_insert_simplex",
-        [](Wrapper& self,
-           nb::ndarray<nb::numpy, const Index, nb::ndim<1>, nb::c_contig> simplex,
-           nb::ndarray<nb::numpy, const Value, nb::ndim<1>, nb::c_contig> filtration,
-           bool force) {
-          return insert_single_simplex<Wrapper, Filtration, Value, true>(
-              self,
-              simplex_from_array(simplex),
-              nb::cast(kcritical_filtration_from_array<Filtration, Value>(filtration, self.tree.num_parameters())),
-              force);
-        },
-        "simplex"_a,
-        "filtration"_a,
-        "force"_a = false);
+    // cls.def(
+    //     "_insert_simplex",
+    //     [](Wrapper& self,
+    //        nb::ndarray<nb::numpy, const Index, nb::ndim<1>, nb::c_contig> simplex,
+    //        nb::ndarray<nb::numpy, const Value, nb::ndim<1>, nb::c_contig> filtration,
+    //        bool force) {
+    //       return insert_single_simplex<Wrapper, Filtration, Value, true>(
+    //           self,
+    //           simplex_from_array(simplex),
+    //           nb::cast(kcritical_filtration_from_array<Filtration, Value>(filtration, self.tree.num_parameters())),
+    //           force);
+    //     },
+    //     "simplex"_a,
+    //     "filtration"_a,
+    //     "force"_a = false);
 
-    cls.def(
-        "_insert_simplex",
-        [](Wrapper& self,
-           nb::ndarray<nb::numpy, const Index, nb::ndim<1>, nb::c_contig> simplex,
-           nb::ndarray<nb::numpy, const Value, nb::ndim<2>, nb::c_contig> filtration,
-           bool force) {
-          return insert_single_simplex<Wrapper, Filtration, Value, true>(
-              self,
-              simplex_from_array(simplex),
-              nb::cast(kcritical_filtration_from_array<Filtration, Value>(filtration, self.tree.num_parameters())),
-              force);
-        },
-        "simplex"_a,
-        "filtration"_a,
-        "force"_a = false);
+    // cls.def(
+    //     "_insert_simplex",
+    //     [](Wrapper& self,
+    //        nb::ndarray<nb::numpy, const Index, nb::ndim<1>, nb::c_contig> simplex,
+    //        nb::ndarray<nb::numpy, const Value, nb::ndim<2>, nb::c_contig> filtration,
+    //        bool force) {
+    //       return insert_single_simplex<Wrapper, Filtration, Value, true>(
+    //           self,
+    //           simplex_from_array(simplex),
+    //           nb::cast(kcritical_filtration_from_array<Filtration, Value>(filtration, self.tree.num_parameters())),
+    //           force);
+    //     },
+    //     "simplex"_a,
+    //     "filtration"_a,
+    //     "force"_a = false);
 
-    cls.def(
-        "_insert",
-        [](Wrapper& self,
-           nb::ndarray<nb::numpy, const Index, nb::ndim<1>, nb::c_contig> simplex,
-           nb::ndarray<nb::numpy, const Value, nb::ndim<1>, nb::c_contig> filtration) -> bool {
-          return insert_single_simplex<Wrapper, Filtration, Value, true>(
-              self,
-              simplex_from_array(simplex),
-              nb::cast(kcritical_filtration_from_array<Filtration, Value>(filtration, self.tree.num_parameters())),
-              false);
-        },
-        "simplex"_a,
-        "filtration"_a);
+    // cls.def(
+    //     "_insert",
+    //     [](Wrapper& self,
+    //        nb::ndarray<nb::numpy, const Index, nb::ndim<1>, nb::c_contig> simplex,
+    //        nb::ndarray<nb::numpy, const Value, nb::ndim<1>, nb::c_contig> filtration) -> bool {
+    //       return insert_single_simplex<Wrapper, Filtration, Value, true>(
+    //           self,
+    //           simplex_from_array(simplex),
+    //           nb::cast(kcritical_filtration_from_array<Filtration, Value>(filtration, self.tree.num_parameters())),
+    //           false);
+    //     },
+    //     "simplex"_a,
+    //     "filtration"_a);
 
-    cls.def(
-        "_insert",
-        [](Wrapper& self,
-           nb::ndarray<nb::numpy, const Index, nb::ndim<1>, nb::c_contig> simplex,
-           nb::ndarray<nb::numpy, const Value, nb::ndim<2>, nb::c_contig> filtration) -> bool {
-          return insert_single_simplex<Wrapper, Filtration, Value, true>(
-              self,
-              simplex_from_array(simplex),
-              nb::cast(kcritical_filtration_from_array<Filtration, Value>(filtration, self.tree.num_parameters())),
-              false);
-        },
-        "simplex"_a,
-        "filtration"_a);
+    // cls.def(
+    //     "_insert",
+    //     [](Wrapper& self,
+    //        nb::ndarray<nb::numpy, const Index, nb::ndim<1>, nb::c_contig> simplex,
+    //        nb::ndarray<nb::numpy, const Value, nb::ndim<2>, nb::c_contig> filtration) -> bool {
+    //       return insert_single_simplex<Wrapper, Filtration, Value, true>(
+    //           self,
+    //           simplex_from_array(simplex),
+    //           nb::cast(kcritical_filtration_from_array<Filtration, Value>(filtration, self.tree.num_parameters())),
+    //           false);
+    //     },
+    //     "simplex"_a,
+    //     "filtration"_a);
 
     cls.def(
         "_assign_filtration",
@@ -686,32 +685,32 @@ nb::object filtration_to_python(const Filtration& filtration, nb::handle owner) 
 //       normalized_filtration_to_python<Filtration, T, IsKCritical, SortRows>(*pair.second, nb::find(self)));
 // }
 
-template <typename Wrapper, typename Filtration, typename T, bool IsKCritical>
-bool insert_single_simplex(Wrapper& self, const std::vector<int>& simplex, nb::handle filtration_handle, bool force) {
-  if constexpr (IsKCritical) {
-    (void)force;
-    bool has_filtration = !filtration_handle.is_none();
-    std::unique_ptr<Filtration> filtration;
-    if (has_filtration) {
-      filtration = std::make_unique<Filtration>(
-          filtration_from_handle<Filtration, T, IsKCritical>(filtration_handle, self.tree.num_parameters()));
-    }
-    bool inserted = false;
-    {
-      nb::gil_scoped_release release;
-      inserted = insert_kcritical_simplex(self.tree, simplex, filtration.get());
-    }
-    return inserted;
-  } else {
-    auto filtration = filtration_from_handle<Filtration, T, IsKCritical>(filtration_handle, self.tree.num_parameters());
-    bool inserted = false;
-    {
-      nb::gil_scoped_release release;
-      inserted = force ? self.tree.insert_force(simplex, filtration) : self.tree.insert(simplex, filtration);
-    }
-    return inserted;
-  }
-}
+// template <typename Wrapper, typename Filtration, typename T, bool IsKCritical>
+// bool insert_single_simplex(Wrapper& self, const std::vector<int>& simplex, nb::handle filtration_handle, bool force) {
+//   if constexpr (IsKCritical) {
+//     (void)force;
+//     bool has_filtration = !filtration_handle.is_none();
+//     std::unique_ptr<Filtration> filtration;
+//     if (has_filtration) {
+//       filtration = std::make_unique<Filtration>(
+//           filtration_from_handle<Filtration, T, IsKCritical>(filtration_handle, self.tree.num_parameters()));
+//     }
+//     bool inserted = false;
+//     {
+//       nb::gil_scoped_release release;
+//       inserted = insert_kcritical_simplex(self.tree, simplex, filtration.get());
+//     }
+//     return inserted;
+//   } else {
+//     auto filtration = filtration_from_handle<Filtration, T, IsKCritical>(filtration_handle, self.tree.num_parameters());
+//     bool inserted = false;
+//     {
+//       nb::gil_scoped_release release;
+//       inserted = force ? self.tree.insert_force(simplex, filtration) : self.tree.insert(simplex, filtration);
+//     }
+//     return inserted;
+//   }
+// }
 
 template <typename Desc, typename TargetWrapper, typename TargetInterface>
 void copy_from_desc(TargetWrapper& self, const simplextree_wrapper_t<Desc>& source) {
@@ -984,7 +983,7 @@ void bind_simplextree_class(nb::module_& m, nb::list& available_simplextrees) {
           .def(nb::new_([](int num_parameters) {
                  Wrapper out;
                  int n = num_parameters <= 0 ? 2 : num_parameters;
-                //  out.tree.resize_all_filtrations(n);
+                 //  out.tree.resize_all_filtrations(n);
                  out.tree.set_num_parameters(n);
                  return out;
                }),
@@ -1056,22 +1055,22 @@ void bind_simplextree_class(nb::module_& m, nb::list& available_simplextrees) {
                 return self;
               },
               nb::rv_policy::reference_internal)
-          .def(
-              "_insert_simplex",
-              [](Wrapper& self, nb::handle simplex_handle, nb::handle filtration_handle, bool force) {
-                auto simplex = vector_from_handle<int>(simplex_handle);
-                return insert_single_simplex<Wrapper, Filtration, Value, k_is_kcritical>(
-                    self, simplex, filtration_handle, force);
-              },
-              "simplex"_a,
-              "filtration"_a = nb::none(),
-              "force"_a = false)
+          // .def(
+          //     "_insert_simplex",
+          //     [](Wrapper& self, nb::handle simplex_handle, nb::handle filtration_handle, bool force) {
+          //       auto simplex = vector_from_handle<int>(simplex_handle);
+          //       return insert_single_simplex<Wrapper, Filtration, Value, k_is_kcritical>(
+          //           self, simplex, filtration_handle, force);
+          //     },
+          //     "simplex"_a,
+          //     "filtration"_a = nb::none(),
+          //     "force"_a = false)
           .def(
               "_insert",
-              [](Wrapper& self, nb::handle simplex_handle, nb::handle filtration_handle) -> bool {
-                auto simplex = vector_from_handle<int>(simplex_handle);
-                return insert_single_simplex<Wrapper, Filtration, Value, k_is_kcritical>(
-                    self, simplex, filtration_handle, false);
+              [](Wrapper& self,
+                 nanobind::ndarray<const int, nanobind::ndim<1>, nanobind::any_contig> vertices,
+                 nanobind::object filtrationValues) -> bool {
+                return self.tree.insert_single_simplex(vertices, filtrationValues);
               },
               "simplex"_a,
               "filtration"_a = nb::none())
@@ -1090,43 +1089,52 @@ void bind_simplextree_class(nb::module_& m, nb::list& available_simplextrees) {
               },
               nb::rv_policy::reference_internal);
 
-  bind_insert_batch_overloads<decltype(cls), Wrapper, Filtration, Value, k_is_kcritical, int32_t>(cls);
-  bind_insert_batch_overloads<decltype(cls), Wrapper, Filtration, Value, k_is_kcritical, int64_t>(cls);
+  // bind_insert_batch_overloads<decltype(cls), Wrapper, Filtration, Value, k_is_kcritical, int32_t>(cls);
+  // bind_insert_batch_overloads<decltype(cls), Wrapper, Filtration, Value, k_is_kcritical, int64_t>(cls);
   bind_simplex_array_overloads<decltype(cls), Wrapper, Filtration, Value, k_is_kcritical, int32_t>(cls);
   bind_simplex_array_overloads<decltype(cls), Wrapper, Filtration, Value, k_is_kcritical, int64_t>(cls);
 
   cls.def(
          "_insert_batch",
-         [](Wrapper& self, nb::handle vertex_array_handle, nb::handle filtrations_handle) -> Wrapper& {
-           auto vertex_array = matrix_from_handle<int>(vertex_array_handle);
-           auto simplices = simplices_from_vertex_rows(vertex_array);
-           if (simplices.empty()) {
-             return self;
-           }
-           bool empty_filtration =
-               filtrations_handle.is_none() ||
-               (nb::hasattr(filtrations_handle, "size") && nb::cast<size_t>(filtrations_handle.attr("size")) == 0);
+         //  [](Wrapper& self, nb::handle vertex_array_handle, nb::handle filtrations_handle) -> Wrapper& {
+         //    auto vertex_array = matrix_from_handle<int>(vertex_array_handle);
+         //    auto simplices = simplices_from_vertex_rows(vertex_array);
+         //    if (simplices.empty()) {
+         //      return self;
+         //    }
+         //    bool empty_filtration =
+         //        filtrations_handle.is_none() ||
+         //        (nb::hasattr(filtrations_handle, "size") && nb::cast<size_t>(filtrations_handle.attr("size")) == 0);
 
-           if constexpr (!k_is_kcritical) {
-             std::vector<Filtration> filtrations;
-             if (!empty_filtration) {
-               filtrations =
-                   one_critical_filtrations_from_rows<Filtration, Value>(matrix_from_handle<Value>(filtrations_handle));
-             }
-             return insert_batch_simplices<Wrapper, Filtration, Value, false>(
-                 self, simplices, filtrations, empty_filtration);
-           } else {
-             std::vector<Filtration> filtrations;
-             if (!empty_filtration) {
-               filtrations.reserve(simplices.num_simplices);
-               for (nb::handle row_handle : nb::iter(filtrations_handle)) {
-                 filtrations.push_back(
-                     filtration_from_handle<Filtration, Value, k_is_kcritical>(row_handle, self.tree.num_parameters()));
-               }
-             }
-             return insert_batch_simplices<Wrapper, Filtration, Value, true>(
-                 self, simplices, filtrations, empty_filtration);
-           }
+         //    if constexpr (!k_is_kcritical) {
+         //      std::vector<Filtration> filtrations;
+         //      if (!empty_filtration) {
+         //        filtrations =
+         //            one_critical_filtrations_from_rows<Filtration,
+         //            Value>(matrix_from_handle<Value>(filtrations_handle));
+         //      }
+         //      return insert_batch_simplices<Wrapper, Filtration, Value, false>(
+         //          self, simplices, filtrations, empty_filtration);
+         //    } else {
+         //      std::vector<Filtration> filtrations;
+         //      if (!empty_filtration) {
+         //        filtrations.reserve(simplices.num_simplices);
+         //        for (nb::handle row_handle : nb::iter(filtrations_handle)) {
+         //          filtrations.push_back(
+         //              filtration_from_handle<Filtration, Value, k_is_kcritical>(row_handle,
+         //              self.tree.num_parameters()));
+         //        }
+         //      }
+         //      return insert_batch_simplices<Wrapper, Filtration, Value, true>(
+         //          self, simplices, filtrations, empty_filtration);
+         //    }
+         //  },
+         [](Wrapper& self,
+            nanobind::ndarray<const int, nanobind::ndim<1>, nanobind::any_contig> vertices,
+            nanobind::ndarray<const int, nanobind::ndim<2>> vertex_array,
+            nanobind::object filtrationValues) -> Wrapper& {
+           self.tree.insert_batch(vertices, vertex_array, filtrationValues);
+           return self;
          },
          nb::rv_policy::reference_internal)
       .def("_get_filtration",
@@ -1138,27 +1146,17 @@ void bind_simplextree_class(nb::module_& m, nb::list& available_simplextrees) {
            })
       .def(
           "_iter_simplices",
-          [](Wrapper& self) {
-            return self.tree.get_simplex_python_iterator();
-          },
+          [](Wrapper& self) { return self.tree.get_simplex_python_iterator(); },
           nb::keep_alive<0, 1>())
       .def(
           "get_simplices",
-          [](Wrapper& self) {
-            return self.tree.get_simplex_python_iterator();
-          },
+          [](Wrapper& self) { return self.tree.get_simplex_python_iterator(); },
           nb::keep_alive<0, 1>())
       .def(
-          "__iter__",
-          [](Wrapper& self) {
-            return self.tree.get_simplex_python_iterator();
-          },
-          nb::keep_alive<0, 1>())
+          "__iter__", [](Wrapper& self) { return self.tree.get_simplex_python_iterator(); }, nb::keep_alive<0, 1>())
       .def(
           "get_skeleton",
-          [](Wrapper& self, int dimension) {
-            return self.tree.get_skeleton_python_iterator(dimension);
-          },
+          [](Wrapper& self, int dimension) { return self.tree.get_skeleton_python_iterator(dimension); },
           "dimension"_a,
           nb::keep_alive<0, 1>())
       .def(
@@ -1326,13 +1324,8 @@ void bind_simplextree_class(nb::module_& m, nb::list& available_simplextrees) {
           },
           nb::rv_policy::reference_internal)
       .def("get_simplices_of_dimension",
-           [](Wrapper& self, int dim) {
-             return self.tree.get_simplices_of_dimension(dim);
-           })
-      .def("get_edge_list",
-           [](Wrapper& self) -> nb::ndarray<nb::numpy, Value> {
-             return self.tree.get_edge_list();
-           })
+           [](Wrapper& self, int dim) { return self.tree.get_simplices_of_dimension(dim); })
+      .def("get_edge_list", [](Wrapper& self) -> nb::ndarray<nb::numpy, Value> { return self.tree.get_edge_list(); })
       .def(
           "_reconstruct_from_edge_array",
           [](Wrapper& self,

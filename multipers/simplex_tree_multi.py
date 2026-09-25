@@ -242,18 +242,32 @@ def _astype(self, dtype=None, kcritical=None, ftype=None, filtration_container=N
     return cls(self)
 
 
-def _insert(self, simplex, filtration=None):
-    num_parameters = self.num_parameters
-    if filtration is None:
-        if self.is_kcritical:
-            return self._insert_simplex(
-                np.asarray(simplex, dtype=np.int32), None, False
-            )
-        filtration = np.array(
-            [_t_minus_inf(self.dtype)] * num_parameters, dtype=self.dtype
-        )
-    filtration = np.asarray(filtration, dtype=self.dtype)
-    return self._insert_simplex(np.asarray(simplex, dtype=np.int32), filtration, False)
+# def _insert(self, simplex, filtration=None):
+#     num_parameters = self.num_parameters
+#     if filtration is None:
+#         if self.is_kcritical:
+#             return self._insert_simplex(
+#                 np.asarray(simplex, dtype=np.int32), None, False
+#             )
+#         filtration = np.array(
+#             [_t_minus_inf(self.dtype)] * num_parameters, dtype=self.dtype
+#         )
+#     filtration = np.asarray(filtration, dtype=self.dtype)
+#     return self._insert_simplex(np.asarray(simplex, dtype=np.int32), filtration, False)
+
+def _insert_simplex(self, simplex, filtration = None):
+    s = np.asarray(simplex, dtype=np.intc)
+    if s.ndim != 1:
+        raise ValueError("simplex has to be a 1D array.")
+    return _insert_raw[type(self)](self, s, filtration)
+
+
+def _insert_batch(self, vertex_array, filtrations = None):
+    simplices = np.asarray(vertex_array, dtype=np.intc)
+    if simplices.ndim != 2:
+        raise ValueError("vertex_array has to be a 2D array.")
+    vertices = np.unique(simplices)
+    return _insert_batch_raw[type(self)](self, vertices, simplices, filtrations)
 
 
 def _assign_filtration(self, simplex, filtration):
@@ -748,6 +762,8 @@ _eq_raw = {}
 _set_num_parameter_raw = {}
 _pts_to_indices_raw = {}
 _get_edge_list_raw = {}
+_insert_batch_raw = {}
+_insert_raw = {}
 
 
 def _install_python_api():
@@ -780,6 +796,8 @@ def _install_python_api():
         _set_num_parameter_raw[cls] = cls.set_num_parameter
         _pts_to_indices_raw[cls] = cls.pts_to_indices
         _get_edge_list_raw[cls] = cls.get_edge_list
+        _insert_batch_raw[cls] = cls._insert_batch
+        _insert_raw[cls] = cls._insert
 
         cls.__repr__ = _repr
         cls.__len__ = _len
@@ -789,9 +807,9 @@ def _install_python_api():
         cls.filtration = _filtration
         cls.__getitem__ = _getitem
         cls.astype = _astype
-        cls.insert = cls._insert
+        cls.insert = _insert_simplex
         cls.assign_filtration = _assign_filtration
-        cls.insert_batch = cls._insert_batch
+        cls.insert_batch = _insert_batch
         cls.flagify = _flagify
         cls.__contains__ = _contains
         cls.remove_maximal_simplex = _remove_maximal_simplex
