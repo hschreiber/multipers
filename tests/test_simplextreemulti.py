@@ -457,3 +457,107 @@ def test_5():
     for s, f in st5:
         assert len(f) == 5
     assert mp.SimplexTreeMulti(st5, num_parameters=3) == st3
+
+
+def test_python_simplex_iterables_preserve_lookup_and_boundaries():
+    st = mp.SimplexTreeMulti(num_parameters=2)
+    st.insert([0, 1], [2.0, 3.0])
+    assert st.find_simplex([0])
+    assert not st.find_simplex([99])
+    boundaries = {tuple(simplex) for simplex, _ in st.get_boundaries([0, 1])}
+    assert boundaries == {(0,), (1,)}
+
+
+@pytest.mark.parametrize("parameter", [0, 1, -1])
+def test_distance_matrix_preserves_other_axis_and_fractional_vertex_values(parameter):
+    st = mp.SimplexTreeMulti(num_parameters=2)
+    st.insert([0, 1], [10.0, 20.0])
+    st.fill_distance_matrix(
+        np.array([[0.0, 3.0], [3.0, 0.0]]), parameter=parameter, node_value=0.5
+    )
+    expected_edge = [10.0, 20.0]
+    expected_vertex = [10.0, 20.0]
+    expected_edge[parameter] = 3.0
+    expected_vertex[parameter] = 0.5
+    np.testing.assert_array_equal(st[[0, 1]], expected_edge)
+    np.testing.assert_array_equal(st[[0]], expected_vertex)
+
+
+def test_integer_tree_projection_uses_real_line_arithmetic():
+    st = mp.SimplexTreeMulti(num_parameters=2, dtype=np.int32)
+    st.insert([0], [1, 0])
+    projected = st.project_on_line(
+        parameter=0, basepoint=[0, 0], direction=[2, 1]
+    )
+    assert projected.filtration([0]) == 1.0
+
+
+@pytest.mark.parametrize("num_parameters", [1, 3])
+@pytest.mark.parametrize("empty", [False, True])
+def test_slicer_to_tree_parameter_override_preserves_schema(num_parameters, empty):
+    st = mp.SimplexTreeMulti(num_parameters=2)
+    if not empty:
+        st.insert([0, 1], [1.0, 2.0])
+    out = mp.SimplexTreeMulti(mp.Slicer(st), num_parameters=num_parameters)
+    assert out.num_parameters == num_parameters
+    assert out.num_simplices == st.num_simplices
+    if not empty:
+        expected = [1.0] if num_parameters == 1 else [1.0, 2.0, np.inf]
+        np.testing.assert_array_equal(out[[0, 1]], expected)
+        grid = out.get_filtration_grid()
+        assert len(grid) == num_parameters
+        np.testing.assert_array_equal(grid[0], [1.0])
+        if num_parameters == 3:
+            np.testing.assert_array_equal(grid[1], [2.0])
+
+
+@pytest.mark.parametrize("kcritical", [False, True])
+def test_empty_batch_filtration_retains_omitted_grade_semantics(kcritical):
+    if kcritical and not has_kcritical:
+        pytest.skip("kcritical simplextree not compiled")
+    tree = mp.SimplexTreeMulti(num_parameters=2, kcritical=kcritical)
+    shape = (2, 0, 2) if kcritical else (2, 0)
+    assert tree.insert_batch(
+        np.array([[0, 1]], dtype=np.int32),
+        np.empty(shape, dtype=np.float64),
+    ) is tree
+    expected = np.full((1, 2) if kcritical else (2,), -np.inf)
+    simplices = list(tree.get_simplices())
+    assert {tuple(simplex) for simplex, _ in simplices} == {(0,), (1,)}
+    for _, grade in simplices:
+        np.testing.assert_array_equal(grade, expected)
+
+
+def test_integer_tree_coarsens_against_real_grid():
+    tree = mp.SimplexTreeMulti(num_parameters=1, dtype=np.int32)
+    tree.insert([0], [1])
+    grid = [np.array([0.6, 1.8])]
+    squeezed = tree.grid_squeeze(filtration_grid=grid)
+    np.testing.assert_array_equal(squeezed[[0]], [0])
+    np.testing.assert_array_equal(squeezed.filtration_grid[0], grid[0])
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_empty_filtration_degree_selection(empty):
+    tree = mp.SimplexTreeMulti(num_parameters=2)
+    if not empty:
+        tree.insert([0], [1.0, 2.0])
+    assert tree._get_filtration_values(degrees=[]) == []
+
+
+def test_normalize_filtrations_preserves_identity():
+    tree = mp.SimplexTreeMulti(num_parameters=2)
+    tree.insert([0], [2.0, 4.0])
+    tree.insert([1], [4.0, 8.0])
+    assert tree.normalize_filtrations() is tree
+    np.testing.assert_array_equal(tree[[0]], [0.0, 0.0])
+    np.testing.assert_array_equal(tree[[1]], [1.0, 1.0])
+
+
+def test_empty_filtration_grid_preserves_object_until_explicit_clear():
+    tree = mp.SimplexTreeMulti(num_parameters=2)
+    grid = [np.empty(0), np.empty(0)]
+    tree.filtration_grid = grid
+    assert tree.filtration_grid is grid
+    tree.filtration_grid = None
+    assert tree.filtration_grid is None
