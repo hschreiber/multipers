@@ -72,9 +72,11 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
   using Tensor3D = nanobind::ndarray<const U, nanobind::ndim<3>>;
 
   Multi_simplex_tree_interface() : Base(), filtrationGrid_(nanobind::none()) {};
+
   Multi_simplex_tree_interface(int numParam) : Base(), filtrationGrid_(nanobind::none()) {
     Base::set_num_parameters(numParam <= 0 ? 2 : numParam);
   };
+
   Multi_simplex_tree_interface(const Base& st) : Base(st), filtrationGrid_(nanobind::none()) {};
   Multi_simplex_tree_interface(Base&& st) : Base(std::move(st)), filtrationGrid_(nanobind::none()) {};
 
@@ -125,6 +127,7 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
       nanobind::gil_scoped_release release;
       Base::clear();
       st = build_simplex_tree_from_complex<Options>(other.get_filtered_complex(), maxDim, numParam);
+      st.set_num_parameters(numParam >= 0 ? numParam : other.get_number_of_parameters());
     }
     *this = std::move(st);
   }
@@ -154,14 +157,8 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
       return;
     }
 
-    // throws if it does not pass the check
-    // returns false if valid but empty
-    if (detail::_verify_grid_validity(grid)) {
-      filtrationGrid_ = grid;
-      return;
-    }
-
-    filtrationGrid_ = nanobind::none();
+    detail::_verify_grid_validity(grid);
+    filtrationGrid_ = grid;
   }
 
   bool find_simplex(nanobind::object simplex) const {
@@ -194,7 +191,12 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
 
     std::vector<Filtration_value> fils;
     if (!filtrationValues.is_none()) {
-      fils = detail::_cast_to_filtration_value_array<Filtration_value>(filtrationValues, Base::num_parameters());
+      nanobind::ndarray<> array;
+      if (nanobind::try_cast(filtrationValues, array, false) && array.size() == 0) {
+        detail::_require_cpu_array(array);
+      } else {
+        fils = detail::_cast_to_filtration_value_array<Filtration_value>(filtrationValues, Base::num_parameters());
+      }
     }
     Base::clear_filtration();
 
@@ -358,6 +360,7 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
 
   // TODO: homogenize format with Slicer
   nanobind::tuple get_filtration_values(Tensor1D<int> degrees) const {
+    if (degrees.size() == 0) return nanobind::tuple();
     // assumes degrees has no duplicates and is sorted
     auto view = degrees.view();
     std::vector<std::vector<value_type>> values;
@@ -496,8 +499,8 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
   }
 
   Multi_simplex_tree_interface& fill_distance_matrix(Tensor2D<value_type> distanceMatrix,
-                                                     value_type nodeValue,
-                                                     int axis) {
+                                                     int axis,
+                                                     value_type nodeValue) {
     // assuming Base::num_parameters() was properly set
     if (axis < 0) axis += Base::num_parameters();
     if (axis < 0 || axis >= Base::num_parameters()) throw std::invalid_argument("Axis is not a valid parameter index.");
@@ -742,7 +745,6 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
 
   Simplex_handle _get_handle_from_vertices(nanobind::object simplex) const {
     auto cast_as_iterable = [&]() -> Simplex_handle {
-      nanobind::gil_scoped_release release;
       return Base::find(detail::as_cpp_range<Vertex_handle>(simplex));
     };
     auto cast_first_as_tensor_then_as_iterable = [&]<typename U>() -> Simplex_handle {
