@@ -35,7 +35,7 @@
 #include <python_interfaces/Simplex_tree_interface.h>
 #include <gudhi/multi_simplex_tree_helpers.h>
 #include <gudhi/Multi_persistence/Line.h>
-#include <gudhi/Multi_persistence/utils.h>
+#include <gudhi/Multi_persistence/complex_helpers.h>
 #include <gudhi/Multi_parameter_filtration_value.h>
 
 #include "interface_helpers.h"

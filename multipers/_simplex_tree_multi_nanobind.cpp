@@ -28,7 +28,7 @@ namespace mpst {
 
 using tensor_dtype = int32_t;
 using indices_type = int32_t;
-using signed_measure_type = std::pair<std::vector<std::vector<indices_type>>, std::vector<tensor_dtype>>;
+using signed_measure_type = std::pair<std::vector<indices_type>, std::vector<tensor_dtype>>;
 
 using multipers::core::SimplexTreeConversion;
 using multipers::nanobind_helpers::dispatch_simplextree_by_template_id;
@@ -78,13 +78,14 @@ nb::object get_simplextree_class_from_template_id(int template_id) {
 inline bool is_simplextree_multi(nb::handle input) { return is_simplextree_object(input); }
 
 nb::tuple signed_measure_to_python(const signed_measure_type& sm, size_t width) {
-  std::vector<indices_type> flat_pts;
-  flat_pts.reserve(sm.first.size() * width);
-  for (const auto& row : sm.first) {
-    flat_pts.insert(flat_pts.end(), row.begin(), row.end());
-  }
+  // std::vector<indices_type> flat_pts;
+  std::vector<indices_type> flat_pts(sm.first.begin(), sm.first.end());
+  // flat_pts.reserve(sm.first.size() * width);
+  // for (const auto& row : sm.first) {
+  //   flat_pts.insert(flat_pts.end(), row.begin(), row.end());
+  // }
   std::vector<tensor_dtype> weights(sm.second.begin(), sm.second.end());
-  return nb::make_tuple(nb::cast(owned_array<indices_type>(std::move(flat_pts), {sm.first.size(), width})),
+  return nb::make_tuple(nb::cast(owned_array<indices_type>(std::move(flat_pts), {sm.first.size() / width, width})),
                         nb::cast(owned_array<tensor_dtype>(std::move(weights), {sm.second.size()})));
 }
 

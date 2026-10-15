@@ -579,63 +579,7 @@ void get_hilbert_surface(Gudhi::multi_persistence::Slicer<Filtration, PersBacken
 }
 
 template <typename PersBackend, typename Filtration, typename dtype, typename indices_type, typename... Args>
-void get_hilbert_surface_python(Gudhi::multi_persistence::Slicer<Filtration, PersBackend> &slicer,
-                                dtype *data_ptr,
-                                std::vector<indices_type> grid_shape,
-                                const std::vector<indices_type> degrees,
-                                const bool mobius_inversion,
-                                const bool zero_pad,
-                                const bool ignore_inf,
-                                indices_type n_jobs) {
-  const bool verbose = false;
-  if (degrees.size() == 0) return;
-  // const bool verbose = false;
-  // auto &st_multi =
-  //     get_simplextree_from_pointer<python_interface::interface_multi<Filtration>>(simplextree_ptr);
-  mobius_inversion::dense_tensor_view<dtype, indices_type> container(data_ptr, grid_shape);  // assumes zero tensor
-  int num_parameters = slicer.get_number_of_parameters();
-  std::vector<indices_type> coordinates_to_compute(num_parameters);
-  for (auto i = 0u; i < coordinates_to_compute.size(); i++) coordinates_to_compute[i] = i;
-  // for (auto [c,i] : std::views::zip(coordinates_to_compute,
-  // std::views::iota(0,st_multi.num_parameters()))) c=i; // NIK apple
-  // clang
-  std::vector<indices_type> fixed_values(num_parameters);
-
-  if (verbose) {
-    std::cout << "Container shape : ";
-    for (auto r : container.get_resolution()) std::cout << r << ", ";
-    std::cout << "\nContainer size : " << container.size();
-    std::cout << "\nComputing hilbert invariant ...";
-  }
-  if (zero_pad) {
-    // +1 is bc degree is on first axis.
-    for (auto i = 1; i < num_parameters + 1; i++)
-      grid_shape[i]--;  // get hilbert surface computes according to grid_shape.
-    // for (auto i : std::views::iota(1,st_multi.num_parameters()+1))
-    // grid_shape[i]--; // get hilbert surface computes according to grid_shape.
-  }
-
-  oneapi::tbb::task_arena arena(PersBackend::is_vine ? 1 : n_jobs);  // limits the number of threads
-  arena.execute([&] {
-    get_hilbert_surface(slicer,
-                        container,
-                        grid_shape,
-                        degrees,
-                        coordinates_to_compute,
-                        fixed_values,
-                        mobius_inversion,
-                        zero_pad,
-                        ignore_inf);
-  });
-
-  if (mobius_inversion)
-    for (indices_type axis = 2u; axis < num_parameters + 1; axis++)
-      mobius_inversion::differentiate(data_ptr, container.get_resolution(), axis);
-  return;
-}
-
-template <typename PersBackend, typename Filtration, typename dtype, typename indices_type, typename... Args>
-std::pair<std::vector<std::vector<indices_type>>, std::vector<dtype>> get_hilbert_signed_measure(
+std::pair<std::vector<indices_type>, std::vector<dtype>> get_hilbert_signed_measure(
     Gudhi::multi_persistence::Slicer<Filtration, PersBackend> &slicer,
     dtype *data_ptr,
     std::vector<indices_type> grid_shape,

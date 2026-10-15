@@ -44,14 +44,12 @@
 #include <gudhi/Slicer.h>
 #include <gudhi/multi_persistence_landscapes.h>
 #include <gudhi/Multi_persistence/Line.h>
-#include <gudhi/Multi_persistence/utils.h>
 #include <python_interfaces/numpy_utils.h>
 
 #include "Multi_simplex_tree_interface.h"
 #include "python_interfaces/construction_utils.h"
 #include "interface_helpers.h"
 #include "interface_helper_structs.h"
-#include "graph_mph0/slicer_backend.h"
 
 namespace Gudhi {
 namespace multi_persistence {

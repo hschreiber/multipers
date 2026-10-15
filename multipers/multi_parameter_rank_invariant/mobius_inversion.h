@@ -6,6 +6,8 @@
 #include <utility>
 #include <vector>
 
+#include "gudhi/Multi_persistence/tensor_helpers.h"
+
 namespace Gudhi {
 namespace multiparameter {
 namespace mobius_inversion {
@@ -79,39 +81,43 @@ class dense_tensor_view {
 
 template <typename dtype, typename index_type>
 inline void differentiate(dtype *data, const std::vector<index_type> &shape, index_type axis) {
-  const auto strides = compute_strides(shape);
-  const std::size_t size = dense_size(shape);
-  const auto stride = strides[axis];
-  const auto axis_size = shape[axis];
-  if (axis_size <= 1) return;
+  auto view = Gudhi::multi_persistence::Tensor(data, shape);
+  Gudhi::multi_persistence::differentiate(view, axis);
 
-  for (std::size_t linear = size; linear-- > 0;) {
-    const auto coordinate = (static_cast<index_type>(linear) / stride) % axis_size;
-    if (coordinate == 0) continue;
-    data[linear] -= data[linear - stride];
-  }
+  // const auto strides = compute_strides(shape);
+  // const std::size_t size = dense_size(shape);
+  // const auto stride = strides[axis];
+  // const auto axis_size = shape[axis];
+  // if (axis_size <= 1) return;
+
+  // for (std::size_t linear = size; linear-- > 0;) {
+  //   const auto coordinate = (static_cast<index_type>(linear) / stride) % axis_size;
+  //   if (coordinate == 0) continue;
+  //   data[linear] -= data[linear - stride];
+  // }
 }
 
 template <typename dtype, typename index_type>
-inline std::pair<std::vector<std::vector<index_type>>, std::vector<dtype>> sparsify(
+inline auto sparsify(
     const dense_tensor_view<dtype, index_type> &tensor,
-    const std::vector<bool> &flip_axes = {},
-    bool verbose = false) {
-  std::vector<std::vector<index_type>> coordinates;
-  std::vector<dtype> values;
-  for (std::size_t i = 0; i < tensor.size(); ++i) {
-    const auto value = tensor.data_at(static_cast<index_type>(i));
-    if (value == 0) continue;
-    coordinates.push_back(tensor.data_index_inverse(static_cast<index_type>(i), flip_axes));
-    values.push_back(value);
-  }
-  if (verbose) {
-    for (std::size_t i = 0; i < coordinates.size(); ++i) {
-      for (const auto &coordinate : coordinates[i]) std::cout << coordinate << " ";
-      std::cout << "| " << values[i] << std::endl;
-    }
-  }
-  return {coordinates, values};
+    const std::vector<bool> &flip_axes = {}) {
+      auto view = Gudhi::multi_persistence::Tensor(tensor.data(), tensor.get_resolution());
+  return Gudhi::multi_persistence::sparsify<index_type>(view, flip_axes);
+  // std::vector<std::vector<index_type>> coordinates;
+  // std::vector<dtype> values;
+  // for (std::size_t i = 0; i < tensor.size(); ++i) {
+  //   const auto value = tensor.data_at(static_cast<index_type>(i));
+  //   if (value == 0) continue;
+  //   coordinates.push_back(tensor.data_index_inverse(static_cast<index_type>(i), flip_axes));
+  //   values.push_back(value);
+  // }
+  // if (verbose) {
+  //   for (std::size_t i = 0; i < coordinates.size(); ++i) {
+  //     for (const auto &coordinate : coordinates[i]) std::cout << coordinate << " ";
+  //     std::cout << "| " << values[i] << std::endl;
+  //   }
+  // }
+  // return {coordinates, values};
 }
 
 }  // namespace mobius_inversion

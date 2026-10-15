@@ -37,7 +37,7 @@ void get_euler_surface(
 
 
 template<typename Filtration, typename dtype=int, typename indices_type=uint16_t>
-std::pair<std::vector<std::vector<indices_type>>, std::vector<dtype>> get_euler_signed_measure(
+std::pair<std::vector<indices_type>, std::vector<dtype>> get_euler_signed_measure(
 	Gudhi::multi_persistence::Multi_simplex_tree_interface<Filtration>& st_multi, 
 	dtype* data_ptr, 
 	std::vector<indices_type> grid_shape,

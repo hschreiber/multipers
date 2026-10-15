@@ -6,6 +6,8 @@
 #include <numeric>
 #include <vector>
 
+#include "../multi_parameter_rank_invariant/mobius_inversion.h"
+
 // TODO : sparse version, current operator[] is already a hash.
 namespace tensor {
 
@@ -225,27 +227,29 @@ class static_tensor_view {  // Python handles the construction - destruction of
 
   void differentiate(indices_type axis);
 
-  inline sparse_type sparsify(const std::vector<bool> &flip_axes = {}, bool verbose = false) const {
-    std::vector<std::vector<indices_type>> coordinates;
-    std::vector<dtype> values;
-    // for (indices_type i = 0; i < static_cast<indices_type>(this->size());
-    // i++){
-    for (auto i = 0u; i < this->size(); i++) {
-      auto stuff = this->data_at(i);
-      if (stuff == 0) [[likely]]  // as this is sparse
-        continue;
-      coordinates.push_back(this->data_index_inverse(i, flip_axes));
-      values.push_back(stuff);
-    }
-    if (verbose) [[unlikely]] {
-      // for (auto [pt,w] : std::views::zip(coordinates, values)){ NIK apple
-      // clang
-      for (auto i = 0u; i < coordinates.size(); i++) {
-        for (const auto &v : coordinates[i]) std::cout << v << " ";
-        std::cout << "| " << values[i] << std::endl;
-      }
-    }
-    return {coordinates, values};
+  inline auto sparsify(const std::vector<bool> &flip_axes = {}) const {
+    // std::vector<std::vector<indices_type>> coordinates;
+    // std::vector<dtype> values;
+    // // for (indices_type i = 0; i < static_cast<indices_type>(this->size());
+    // // i++){
+    // for (auto i = 0u; i < this->size(); i++) {
+    //   auto stuff = this->data_at(i);
+    //   if (stuff == 0) [[likely]]  // as this is sparse
+    //     continue;
+    //   coordinates.push_back(this->data_index_inverse(i, flip_axes));
+    //   values.push_back(stuff);
+    // }
+    // if (verbose) [[unlikely]] {
+    //   // for (auto [pt,w] : std::views::zip(coordinates, values)){ NIK apple
+    //   // clang
+    //   for (auto i = 0u; i < coordinates.size(); i++) {
+    //     for (const auto &v : coordinates[i]) std::cout << v << " ";
+    //     std::cout << "| " << values[i] << std::endl;
+    //   }
+    // }
+    // return {coordinates, values};
+    auto view = Gudhi::multi_persistence::Tensor(data_ptr_, resolution_);
+    return Gudhi::multi_persistence::sparsify<indices_type>(view, flip_axes);
   }
 
   // template<class oned_array_like=std::initializer_list<indices_type>>
@@ -622,51 +626,32 @@ class static_tensor_view_view
 
 template <typename dtype, typename indices_type>
 void inline static_tensor_view<dtype, indices_type>::differentiate(indices_type axis) {
-  std::vector<std::vector<indices_type>> free_coordinates(this->ndim());
+  // std::vector<std::vector<indices_type>> free_coordinates(this->ndim());
 
-  // initialize free_coordinates of the view, full coordinates on each axis
-  // exept for axis on which we iterate
-  for (auto i = 0u; i < free_coordinates.size(); i++) {
-    if (static_cast<indices_type>(i) == axis) continue;
-    free_coordinates[i] = std::vector<indices_type>(this->get_resolution()[i]);
-    for (auto j = 0u; j < free_coordinates[i].size(); j++) {  // TODO optimize
-      free_coordinates[i][j] = j;
-    }
-  }
-  // iterate over coordinate of this axis with ab -> b-a -> ab=b[newslice]
-  free_coordinates[axis] = {{0}};
-  static_tensor_view_view<dtype, indices_type> x_i(*this, free_coordinates);
-  std::vector<dtype> a, b;
-  a = x_i.copy_data();
-  for (indices_type h = 1; h < this->get_resolution()[axis]; h++) {
-    free_coordinates[axis] = {{h}};
-    // x_i = static_tensor_view_view<dtype,
-    // indices_type>(*this,free_coordinates);
-    x_i.shift_coordinate(axis, 1);
-    b = std::move(x_i.copy_data());
-    x_i -= a;
-    a.swap(b);
-  }
-}
-
-template <typename T>
-std::vector<std::vector<T>> cart_product(const std::vector<std::vector<T>> &v) {
-  std::vector<std::vector<T>> s = {{}};
-  for (const auto &u : v) {
-    std::vector<std::vector<T>> r;
-    for (const auto &x : s) {
-      for (const auto y : u) {
-        r.push_back(x);
-        r.back().push_back(y);
-      }
-    }
-    s = std::move(r);
-  }
-  for (const auto &truc : s) {
-    for (const auto &machin : truc) std::cout << machin << ", ";
-    std::cout << "\n";
-  }
-  return s;
+  // // initialize free_coordinates of the view, full coordinates on each axis
+  // // exept for axis on which we iterate
+  // for (auto i = 0u; i < free_coordinates.size(); i++) {
+  //   if (static_cast<indices_type>(i) == axis) continue;
+  //   free_coordinates[i] = std::vector<indices_type>(this->get_resolution()[i]);
+  //   for (auto j = 0u; j < free_coordinates[i].size(); j++) {  // TODO optimize
+  //     free_coordinates[i][j] = j;
+  //   }
+  // }
+  // // iterate over coordinate of this axis with ab -> b-a -> ab=b[newslice]
+  // free_coordinates[axis] = {{0}};
+  // static_tensor_view_view<dtype, indices_type> x_i(*this, free_coordinates);
+  // std::vector<dtype> a, b;
+  // a = x_i.copy_data();
+  // for (indices_type h = 1; h < this->get_resolution()[axis]; h++) {
+  //   free_coordinates[axis] = {{h}};
+  //   // x_i = static_tensor_view_view<dtype,
+  //   // indices_type>(*this,free_coordinates);
+  //   x_i.shift_coordinate(axis, 1);
+  //   b = std::move(x_i.copy_data());
+  //   x_i -= a;
+  //   a.swap(b);
+  // }
+  Gudhi::multiparameter::mobius_inversion::differentiate(data_ptr_, resolution_, axis);
 }
 
 }  // namespace tensor

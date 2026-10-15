@@ -32,7 +32,7 @@ namespace mpnb {
 
 using tensor_dtype = int32_t;
 using indices_type = int32_t;
-using signed_measure_type = std::pair<std::vector<std::vector<indices_type>>, std::vector<tensor_dtype>>;
+using signed_measure_type = std::pair<std::vector<indices_type>, std::vector<tensor_dtype>>;
 
 using multipers::nanobind_dense_utils::matrix_from_array;
 using multipers::nanobind_dense_utils::vector_from_array;

@@ -17,7 +17,6 @@
 #include <gudhi/simple_mdspan.h>
 #include <gudhi/Slicer.h>
 #include "mobius_inversion.h"
-#include "persistence_slices.h"
 
 namespace Gudhi {
 namespace multiparameter {
@@ -114,21 +113,6 @@ class packed_rank_sparse_accumulator {
   coordinate_type key_shape_{};
   std::unordered_map<key_type, dtype> weights_;
 };
-
-// using Elbow = std::vector<std::pair<>>;grid
-template <typename index_type>
-inline void push_in_elbow(index_type &i, index_type &j, const index_type I, const index_type J) {
-  if (j < J) {
-    j++;
-    return;
-  }
-  if (i < I) {
-    i++;
-    return;
-  }
-  j++;
-  return;
-}
 
 template <typename index_type, typename value_type>
 inline value_type get_slice_rank_filtration(const value_type x,
@@ -1075,46 +1059,6 @@ void compute_rank_invariant_python(Gudhi::multi_persistence::Slicer<MultiFiltrat
   }
 
   return;
-}
-
-template <typename PersBackend, typename MultiFiltration, typename dtype = int, typename indices_type = int>
-std::pair<std::vector<std::vector<indices_type>>, std::vector<dtype>> compute_rank_signed_measure(
-    Gudhi::multi_persistence::Slicer<MultiFiltration, PersBackend> &slicer,
-    dtype *data_ptr,
-    const std::vector<indices_type> &grid_shape,
-    const std::vector<indices_type> &degrees,
-    indices_type n_jobs,
-    bool verbose,
-    const bool ignore_inf) {
-  if (degrees.size() == 0) return {{}, {}};
-  if (grid_shape.size() != 5) [[unlikely]] {
-    throw std::runtime_error("Internal error: rank signed measure expects a 5-dimensional grid shape.");
-  }
-  const std::array<indices_type, 5> shape = {grid_shape[0], grid_shape[1], grid_shape[2], grid_shape[3], grid_shape[4]};
-  mobius_inversion::dense_tensor_view<dtype, indices_type> container(data_ptr, grid_shape);  // assumes zero tensor
-  oneapi::tbb::task_arena arena(n_jobs);  // limits the number of threads
-  constexpr bool flip_death = true;
-  arena.execute([&] { compute_2d_rank_invariant(slicer, container, shape, degrees, flip_death, ignore_inf); });
-
-  if (verbose) {
-    std::cout << "Done.\n";
-    std::cout << "Computing mobius inversion ..." << std::flush;
-  }
-
-  // for (indices_type axis :
-  // std::views::iota(2,st_multi.num_parameters()+1)) // +1 for the
-  // degree in axis 0
-  for (std::size_t axis = 0u; axis < slicer.get_number_of_parameters() + 1; axis++)
-    mobius_inversion::differentiate(data_ptr, grid_shape, static_cast<indices_type>(axis));
-  if (verbose) {
-    std::cout << "Done.\n";
-    std::cout << "Sparsifying the measure ..." << std::flush;
-  }
-  auto raw_signed_measure = mobius_inversion::sparsify(container, {false, false, true, true});
-  if (verbose) {
-    std::cout << "Done.\n";
-  }
-  return raw_signed_measure;
 }
 
 }  // namespace rank_invariant

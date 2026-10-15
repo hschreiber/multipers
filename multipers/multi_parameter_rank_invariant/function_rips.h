@@ -24,24 +24,6 @@ using flat_multi_st = Gudhi::multi_persistence::Multi_simplex_tree_interface<fla
 using mult_opt = Gudhi::multi_persistence::Simplex_tree_options_multidimensional_filtration<flat_multifiltration>;
 using interface_multi = _multi_st;
 
-std::pair<std::map<value_type, unsigned int>, std::vector<value_type>> inline radius_to_coordinate(
-    Simplex_tree_std_float &st) {
-  unsigned int count = 0;
-  std::map<value_type, unsigned int> out;
-  std::vector<value_type> filtration_values;
-  filtration_values.reserve(st.num_simplices());
-  for (auto sh : st.filtration_simplex_range()) {  // ordered by filtration, so
-                                                   // should be sorted
-    auto filtration = st.filtration(sh);
-    if (!out.contains(filtration)) {
-      out[filtration] = count;
-      filtration_values.push_back(filtration);
-      count++;
-    }
-  }
-  return {out, filtration_values};
-}
-
 // Takes a standard simplextree and turn it into a simplextreemulti, whose first
 // axis is the rips, and the others are the filtrations of the node at each
 // degree in degrees Assumes that the degrees are sorted, and unique
@@ -289,7 +271,7 @@ void compute_function_rips_surface_python(interface_multi &st_multi,
 }
 
 template <typename dtype, typename indices_type>
-std::pair<std::vector<std::vector<indices_type>>, std::vector<dtype>> compute_function_rips_signed_measure_python(
+std::pair<std::vector<indices_type>, std::vector<dtype>> compute_function_rips_signed_measure_python(
     interface_multi &st_multi,
     dtype *data_ptr,
     const std::vector<indices_type> degrees,

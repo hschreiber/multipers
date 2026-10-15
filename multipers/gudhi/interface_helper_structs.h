@@ -32,7 +32,6 @@
 
 #include <gudhi/Simplex_tree.h>
 #include <gudhi/Slicer.h>
-#include <gudhi/Multi_persistence/utils.h>
 #include <python_interfaces/construction_utils.h>
 
 #include "interface_helpers.h"

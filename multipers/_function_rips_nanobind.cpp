@@ -131,7 +131,7 @@ NB_MODULE(_function_rips_nanobind, m) {
         const auto I = mpfrn::grid_rows(simplextree);
         const auto J = mpfrn::num_parameters(simplextree);
         std::vector<mpfrn::tensor_dtype> container(static_cast<size_t>(degree_vector.size()) * I * J, 0);
-        std::pair<std::vector<std::vector<mpfrn::indices_type>>, std::vector<mpfrn::tensor_dtype>> out;
+        std::pair<std::vector<mpfrn::indices_type>, std::vector<mpfrn::tensor_dtype>> out;
         mpfrn::visit_simplextree(simplextree, [&]<typename Desc>(const auto& wrapper) {
           using Interface = typename Desc::interface_type;
           if constexpr (std::is_same_v<Interface, mpfrn::degree_rips_interface>) {
@@ -151,10 +151,10 @@ NB_MODULE(_function_rips_nanobind, m) {
                 "function_rips_signed_measure expects the canonical degree-Rips SimplexTreeMulti type.");
           }
         });
-        const size_t num_columns = out.first.empty() ? 3u : out.first.front().size();
-        auto flat_points = mpfrn::flatten_points(out.first, num_columns);
+        const size_t num_columns = 3; // out.first.empty() ? 3u : out.first.front().size();
+        // auto flat_points = mpfrn::flatten_points(out.first, num_columns);
         return nb::make_tuple(
-            mpfrn::owned_array<mpfrn::indices_type>(std::move(flat_points), {out.first.size(), num_columns}),
+            mpfrn::owned_array<mpfrn::indices_type>(std::move(out.first), {out.first.size() / num_columns, num_columns}),
             mpfrn::owned_array<mpfrn::tensor_dtype>(std::move(out.second), {out.second.size()}));
       },
       "simplextree"_a,

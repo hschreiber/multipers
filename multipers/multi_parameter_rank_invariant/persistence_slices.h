@@ -25,21 +25,6 @@ using Simplex_tree_std_float = Simplex_tree<Simplex_tree_float>;
 
 using Barcode = std::vector<std::pair<Simplex_tree_std_float::Filtration_value, Simplex_tree_std_float::Filtration_value>>;
 
-inline Barcode compute_dgm(Simplex_tree_std_float &st, int degree) {
-  st.initialize_filtration(true);
-  constexpr int coeff_field_characteristic = 11;
-  constexpr Simplex_tree_std_float::Filtration_value min_persistence = 0;
-  bool persistence_dim_max = st.dimension() == degree;
-  Gudhi::persistent_cohomology::Persistent_cohomology<Simplex_tree_std_float, Gudhi::persistent_cohomology::Field_Zp> pcoh(
-      st, persistence_dim_max);
-  pcoh.init_coefficients(coeff_field_characteristic);
-  pcoh.compute_persistent_cohomology(min_persistence);
-  const auto &persistent_pairs = pcoh.intervals_in_dimension(degree);
-  if constexpr (false) {
-    std::cout << "Number of bars : " << persistent_pairs.size() << "\n";
-  }
-  return persistent_pairs;
-}
 
 template <typename degree_type, class interface_std_like>
 inline std::vector<Barcode> compute_dgms(interface_std_like &st,
@@ -95,15 +80,6 @@ inline std::vector<Barcode> compute_dgms(interface_std_like &st,
     out[i] = pcoh.intervals_in_dimension(degrees[i]);
   }
   return out;
-}
-
-// small wrapper
-template <typename degree_type, class interface_std_like>
-inline std::vector<Barcode> compute_dgms(interface_std_like &st,
-                                         const std::vector<degree_type> &degrees,
-                                         int expand_collapse_dim = 0) {
-  if (expand_collapse_dim > 0) return compute_dgms(st, degrees, 10, expand_collapse_dim);
-  return compute_dgms(st, degrees, 0, 0);
 }
 
 // Adapted version from the Simplextree interface

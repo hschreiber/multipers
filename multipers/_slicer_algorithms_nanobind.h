@@ -34,7 +34,7 @@ namespace mpnb {
 
 using tensor_dtype = int32_t;
 using indices_type = int32_t;
-using signed_measure_type = std::pair<std::vector<std::vector<indices_type>>, std::vector<tensor_dtype>>;
+using signed_measure_type = std::pair<std::vector<indices_type>, std::vector<tensor_dtype>>;
 
 using multipers::nanobind_dense_utils::matrix_from_array;
 using multipers::nanobind_dense_utils::vector_from_array;
@@ -50,7 +50,20 @@ using multipers::nanobind_utils::owned_array;
 
 inline bool has_slicer_template_id(const nb::handle& input) { return is_slicer_object(input); }
 
-inline nb::tuple signed_measure_to_python(const signed_measure_type& sm, size_t width) {
+inline nb::tuple signed_measure_to_python2(const signed_measure_type& sm, size_t width) {
+  std::vector<indices_type> flat_pts(sm.first.begin(), sm.first.end());
+  // flat_pts.reserve(sm.first.size() * width);
+  // for (const auto& row : sm.first) {
+  //   flat_pts.insert(flat_pts.end(), row.begin(), row.end());
+  // }
+  std::vector<tensor_dtype> weights(sm.second.begin(), sm.second.end());
+  return nb::make_tuple(nb::cast(owned_array<indices_type>(std::move(flat_pts), {sm.first.size() / width, width})),
+                        nb::cast(owned_array<tensor_dtype>(std::move(weights), {sm.second.size()})));
+}
+
+inline nb::tuple signed_measure_to_python(
+    const std::pair<std::vector<std::vector<indices_type>>, std::vector<tensor_dtype>>& sm,
+    size_t width) {
   std::vector<indices_type> flat_pts;
   flat_pts.reserve(sm.first.size() * width);
   for (const auto& row : sm.first) {
@@ -120,7 +133,7 @@ inline nb::tuple compute_hilbert_signed_measure(type_list<Ds...>,
       sm = Gudhi::multiparameter::hilbert_function::get_hilbert_signed_measure(
           wrapper.get_slicer(), container.data(), full_shape, degrees, zero_pad, n_jobs, verbose, ignore_inf);
     }
-    return signed_measure_to_python(sm, width);
+    return signed_measure_to_python2(sm, width);
   });
 }
 
@@ -138,7 +151,7 @@ inline nb::tuple compute_hilbert_signed_measure_sparse(type_list<Ds...>,
   }
   return dispatch_slicer_by_template_id(template_id_of(slicer), [&]<typename D>() -> nb::tuple {
     auto& wrapper = nb::cast<typename D::interface&>(slicer);
-    signed_measure_type sm;
+    std::pair<std::vector<std::vector<indices_type>>, std::vector<tensor_dtype>> sm;
     {
       nb::gil_scoped_release release;
       sm = Gudhi::multiparameter::hilbert_function::compute_hilbert_signed_measure_sparse_python(
@@ -185,7 +198,7 @@ inline nb::tuple compute_rank_signed_measure_sparse(type_list<Ds...>,
   }
   return dispatch_slicer_by_template_id(template_id_of(slicer), [&]<typename D>() -> nb::tuple {
     auto& wrapper = nb::cast<typename D::interface&>(slicer);
-    signed_measure_type sm;
+    std::pair<std::vector<std::vector<indices_type>>, std::vector<tensor_dtype>> sm;
     {
       nb::gil_scoped_release release;
       sm = Gudhi::multiparameter::rank_invariant::compute_rank_signed_measure_sparse_python(
