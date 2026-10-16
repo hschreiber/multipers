@@ -37,6 +37,7 @@
 #include <gudhi/Multi_persistence/Line.h>
 #include <gudhi/Multi_persistence/complex_helpers.h>
 #include <gudhi/Multi_parameter_filtration_value.h>
+#include <gudhi/euler_signed_measure.h>
 
 #include "interface_helpers.h"
 #include "interface_helper_structs.h"
@@ -641,6 +642,23 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
     return out;
   }
 
+  template <typename I, typename U>
+  nanobind::tuple compute_euler_signed_measure(const std::vector<I>& grid_shape, bool zero_pad, bool verbose) {
+    if constexpr (MultiFiltrationValue::ensures_1_criticality()) {
+      Signed_measure<I, U> sm;
+      {
+        nanobind::gil_scoped_release release;
+        sm = get_euler_signed_measure(*this, grid_shape, zero_pad, true, verbose);
+      }
+      return nanobind::make_tuple(
+          _wrap_as_numpy_array(
+              std::move(sm.coordinates), sm.coordinates.size() / sm.numberOfParameters, sm.numberOfParameters),
+          _wrap_as_numpy_array(std::move(sm.values), sm.values.size()));
+    } else {
+      throw std::runtime_error("Unsupported SimplexTreeMulti type.");
+    }
+  }
+
   template <typename U = value_type>
   auto project_on_line_to_std(Tensor1D<U> basepoint, Tensor1D<U> direction, int dimension) const {
     std::vector<char> buffer;
@@ -649,8 +667,7 @@ class Multi_simplex_tree_interface : public Simplex_tree_multi<MultiFiltrationVa
       Numpy_span baseView(basepoint);
       Numpy_span dirView(direction);
       Line<U> line = Line<U>(baseView.begin(), baseView.end(), dirView.begin(), dirView.end());
-      auto st = Gudhi::multi_persistence::make_one_dimensional<Gudhi::Simplex_tree_options_for_python>(
-          *this, line, dimension);
+      auto st = make_one_dimensional<Gudhi::Simplex_tree_options_for_python>(*this, line, dimension);
       // serialize to be able to transfer it to a python simplex tree imported from gudhi and not multipers
       buffer.resize(st.get_serialization_size());
       st.serialize(buffer.data(), buffer.size());

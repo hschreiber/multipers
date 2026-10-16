@@ -9,8 +9,6 @@
 
 #include "../gudhi/Multi_simplex_tree_interface.h"
 #include "../gudhi/Persistence_slices_interface.h"
-#include "../tensor/tensor.h"
-#include "persistence_slices.h"
 
 namespace Gudhi {
 namespace multiparameter {
@@ -18,11 +16,9 @@ namespace function_rips {
 
 using value_type = typename multi_persistence::Simplex_tree_std::Filtration_value;
 using flat_multifiltration = multipers::tmp_interface::Degree_rips_bifiltration<value_type>;
-using _multifiltration = multipers::tmp_interface::Degree_rips_bifiltration<value_type>;
-using _multi_st = Gudhi::multi_persistence::Multi_simplex_tree_interface<flat_multifiltration>;
 using flat_multi_st = Gudhi::multi_persistence::Multi_simplex_tree_interface<flat_multifiltration>;
 using mult_opt = Gudhi::multi_persistence::Simplex_tree_options_multidimensional_filtration<flat_multifiltration>;
-using interface_multi = _multi_st;
+using interface_multi = Gudhi::multi_persistence::Multi_simplex_tree_interface<flat_multifiltration>;
 
 // Takes a standard simplextree and turn it into a simplextreemulti, whose first
 // axis is the rips, and the others are the filtrations of the node at each
@@ -140,96 +136,6 @@ inline flat_multi_st::Base get_degree_filtrations(multi_persistence::Simplex_tre
   return st_multi;
 }
 
-// assumes that the degree is 1
-inline void fill_st_slice(Simplex_tree_std_float &st_container, flat_multi_st &degree_rips_st, int degree) {
-  auto sh_std = st_container.complex_simplex_range().begin();
-  auto sh_multi = degree_rips_st.complex_simplex_range().begin();
-  auto sh_end = st_container.complex_simplex_range().end();
-  for (; sh_std != sh_end; ++sh_std, ++sh_multi) {
-    value_type splx_filtration = degree_rips_st.get_filtration_value(*sh_multi)(0, degree);
-    st_container.assign_filtration(*sh_std, splx_filtration);
-  }
-}
-
-template <typename dtype, typename index_type>
-inline void compute_2d_function_rips(
-    flat_multi_st &st_multi,                                   // Function rips
-                                                               // Simplex_tree_std &_st,
-    const tensor::static_tensor_view<dtype, index_type> &out,  // assumes its a zero tensor
-    const std::vector<index_type> degrees,
-    index_type I,
-    index_type J,  // grid_shape
-    bool mobius_inverion,
-    bool zero_pad) {
-  constexpr bool verbose = false;
-  if constexpr (verbose) std::cout << "Grid shape : " << I << " " << J << std::endl;
-
-  // inits default simplextrees
-  // copies the st_multi to a standard 1-pers simplextree, and puts its filtration values to 0 for all.
-  Simplex_tree_std_float _st(
-      st_multi,
-      []([[maybe_unused]] const flat_multifiltration &f) -> Simplex_tree_std_float::Filtration_value { return 0.; });
-  tbb::enumerable_thread_specific<Simplex_tree_std_float> thread_simplex_tree(_st);
-  int max_simplex_dimension = *std::max_element(degrees.begin(), degrees.end()) + 1;
-  tbb::parallel_for(0, J, [&](index_type function_value) {
-    auto &st_std = thread_simplex_tree.local();
-    fill_st_slice(st_std, st_multi, function_value);
-    constexpr int num_collapses = 10;
-    const std::vector<Barcode> barcodes = compute_dgms(st_std, degrees, num_collapses, max_simplex_dimension);
-
-    index_type degree_index = 0;
-    for (const auto &barcode : barcodes) {  // TODO range view cartesian product
-      // coordinates_container[0] = degree_index;
-      for (const auto &bar : barcode) {
-        auto birth = bar.first;  // float
-        auto death = bar.second;
-        if (birth >= I)  // some births are the squeezed infinity sentinel
-          continue;
-
-        if (!mobius_inverion) {
-          index_type shift_value = out.get_cum_resolution()[1];  // degree, x coord, y coord
-          index_type border = I;
-          // index_type border  = out.get_resolution()[i+1];
-          // dtype* ptr = &out[coordinates_container];
-          dtype *ptr = &out[{degree_index, static_cast<index_type>(birth), function_value}];
-          auto stop_value = death > static_cast<value_type>(border) ? border : static_cast<index_type>(death);
-          // Warning : for some reason linux static casts float inf to -min_int
-          // so min doesnt work.
-          if constexpr (verbose) {
-            std::cout << "Adding : (";
-            // for (auto stuff : coordinates_container) std::cout << stuff << ",
-            // ";
-            std::cout << ") With death " << death << " casted at " << static_cast<index_type>(death)
-                      << "with threshold at" << stop_value << " with " << border << std::endl;
-          }
-          for (index_type b = birth; b < stop_value; b++) {
-            (*ptr)++;            // adds one to the vector
-            ptr += shift_value;  // shift the pointer to the next element in the
-                                 // segment [birth, death]
-          }
-        } else {
-          // adds birth
-          out[{degree_index, static_cast<index_type>(birth), function_value}]++;
-          if constexpr (verbose) {
-            std::cout << "Coordinate : ";
-            // for (auto c : coordinates_container) std::cout << c << ", ";
-            std::cout << std::endl;
-            std::cout << "axis, death, resolution : " << 1 << ", " << std::to_string(death) << ", "
-                      << out.get_resolution()[1];
-            std::cout << std::endl;
-          }
-          // removes death
-          if (death < I) {
-            out[{degree_index, static_cast<index_type>(death), function_value}]--;
-          } else if (zero_pad) {
-            out[{degree_index, I - 1, function_value}]--;
-          }
-        }
-      }
-      degree_index++;
-    }
-  });
-}
 
 // python interface
 
@@ -248,51 +154,9 @@ inline void get_degree_rips_st_python(const char *buffer_start,
   st_multi_python_container = std::move(st_multi);
 }
 
-template <typename dtype, typename indices_type>
-void compute_function_rips_surface_python(interface_multi &st_multi,
-                                          dtype *data_ptr,
-                                          const std::vector<indices_type> degrees,
-                                          indices_type I,
-                                          indices_type J,
-                                          const bool mobius_inversion = false,
-                                          const bool zero_pad = false,
-                                          indices_type n_jobs = 0) {
-  if (degrees.size() == 0) return;
-  tensor::static_tensor_view<dtype, indices_type> container(data_ptr,
-                                                            {static_cast<indices_type>(degrees.size()), I, J});
-  if (zero_pad) {
-    I--;
-    J--;
-  }
 
-  oneapi::tbb::task_arena arena(n_jobs);  // limits the number of threads
-  arena.execute([&] { compute_2d_function_rips(st_multi, container, degrees, I, J, mobius_inversion, zero_pad); });
-  if (mobius_inversion) container.differentiate(2);  // degree,x axis (already inversed), y axis
-}
 
-template <typename dtype, typename indices_type>
-std::pair<std::vector<indices_type>, std::vector<dtype>> compute_function_rips_signed_measure_python(
-    interface_multi &st_multi,
-    dtype *data_ptr,
-    const std::vector<indices_type> degrees,
-    indices_type I,
-    indices_type J,
-    const bool mobius_inversion = false,
-    const bool zero_pad = false,
-    indices_type n_jobs = 0) {
-  if (degrees.size() == 0) return {{}, {}};
-  tensor::static_tensor_view<dtype, indices_type> container(data_ptr,
-                                                            {static_cast<indices_type>(degrees.size()), I, J});
-  if (zero_pad) {
-    I--;
-    J--;
-  }
 
-  oneapi::tbb::task_arena arena(n_jobs);  // limits the number of threads
-  arena.execute([&] { compute_2d_function_rips(st_multi, container, degrees, I, J, mobius_inversion, zero_pad); });
-  if (mobius_inversion) container.differentiate(2);  // degree,x axis (already inversed), y axis
-  return container.sparsify();
-}
 
 }  // namespace function_rips
 }  // namespace multiparameter

@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <cstdint>
-#include <cstring>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -19,7 +18,7 @@
 #include "simplextree_conversion_core.hpp"
 #include "nanobind_array_utils.hpp"
 #include "nanobind_object_utils.hpp"
-#include "multi_parameter_rank_invariant/euler_characteristic.h"
+#include <gudhi/euler_signed_measure.h>
 
 namespace nb = nanobind;
 using namespace nb::literals;
@@ -28,7 +27,6 @@ namespace mpst {
 
 using tensor_dtype = int32_t;
 using indices_type = int32_t;
-using signed_measure_type = std::pair<std::vector<indices_type>, std::vector<tensor_dtype>>;
 
 using multipers::core::SimplexTreeConversion;
 using multipers::nanobind_helpers::dispatch_simplextree_by_template_id;
@@ -77,42 +75,18 @@ nb::object get_simplextree_class_from_template_id(int template_id) {
 
 inline bool is_simplextree_multi(nb::handle input) { return is_simplextree_object(input); }
 
-nb::tuple signed_measure_to_python(const signed_measure_type& sm, size_t width) {
-  // std::vector<indices_type> flat_pts;
-  std::vector<indices_type> flat_pts(sm.first.begin(), sm.first.end());
-  // flat_pts.reserve(sm.first.size() * width);
-  // for (const auto& row : sm.first) {
-  //   flat_pts.insert(flat_pts.end(), row.begin(), row.end());
-  // }
-  std::vector<tensor_dtype> weights(sm.second.begin(), sm.second.end());
-  return nb::make_tuple(nb::cast(owned_array<indices_type>(std::move(flat_pts), {sm.first.size() / width, width})),
-                        nb::cast(owned_array<tensor_dtype>(std::move(weights), {sm.second.size()})));
-}
-
 template <typename... Desc>
 nb::tuple compute_euler_signed_measure(type_list<Desc...>,
                                        nb::handle simplextree,
-                                       std::vector<tensor_dtype>& container,
                                        const std::vector<indices_type>& grid_shape,
-                                       size_t width,
                                        bool zero_pad,
                                        bool verbose) {
   if (!is_simplextree_multi(simplextree)) {
     throw std::runtime_error("Unsupported SimplexTreeMulti type.");
   }
   return dispatch_simplextree_by_template_id(template_id_of(simplextree), [&]<typename D>() -> nb::tuple {
-    if constexpr (D::is_kcritical) {
-      throw std::runtime_error("Unsupported SimplexTreeMulti type.");
-    } else {
-      auto& st = nb::cast<typename D::interface_type&>(simplextree);
-      signed_measure_type sm;
-      {
-        nb::gil_scoped_release release;
-        sm = Gudhi::multiparameter::euler_characteristic::get_euler_signed_measure(
-            st, container.data(), grid_shape, zero_pad, verbose);
-      }
-      return signed_measure_to_python(sm, width);
-    }
+    auto& st = nb::cast<typename D::interface_type&>(simplextree);
+    return st.template compute_euler_signed_measure<tensor_dtype, indices_type>(grid_shape, zero_pad, verbose);
   });
 }
 
@@ -311,16 +285,9 @@ NB_MODULE(_simplex_tree_multi_nanobind, m) {
 
   m.def(
       "_compute_euler_signed_measure",
-      [](nb::handle simplextree, nb::handle grid_shape_handle, bool zero_pad, bool verbose) {
-        auto grid_shape = mpst::vector_from_handle<mpst::indices_type>(grid_shape_handle);
-        size_t width = grid_shape.size();
-        size_t total = 1;
-        for (mpst::indices_type value : grid_shape) {
-          total *= static_cast<size_t>(value);
-        }
-        std::vector<mpst::tensor_dtype> container(total, 0);
+      [](nb::handle simplextree, std::vector<mpst::indices_type> grid_shape, bool zero_pad, bool verbose) {
         return mpst::compute_euler_signed_measure(
-            mpst::SimplexTreeDescriptorList{}, simplextree, container, grid_shape, width, zero_pad, verbose);
+            mpst::SimplexTreeDescriptorList{}, simplextree, grid_shape, zero_pad, verbose);
       },
       "simplextree"_a,
       "grid_shape"_a,
